@@ -21,8 +21,8 @@ export type PathValue<T extends GenericObject, K extends PathKey<T, Depth> | str
             : T[key]
 }[K]
 
-export type StoreInitializer<TypeState> = ( get: ()=>TypeState, set: (state:TypeState)=>void ) => TypeState
 export type NextState<TypeState> = TypeState | ((state:TypeState)=>TypeState)
+export type StoreInitializer<TypeState> = ( get: ()=>TypeState, set: (nextState: NextState<TypeState>)=>void ) => TypeState
 export type changeListener<TypeState> = (newState: TypeState, oldState?: TypeState) => void
 export interface Store<TypeState> {
 	/** get snapshot state */
