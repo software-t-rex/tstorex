@@ -1,3 +1,4 @@
+import { deepFreeze } from './deepFreeze'
 import type { PathKey, Store, StoreInitializer } from './type'
 
 
@@ -59,7 +60,7 @@ const getScopeStoreFromPath = <T, Path extends PathKey<T> & string>(store: Parti
  *   the store or any of its child store after that will throw.
  *   The store can't be re-used and any reference in your code to the store or any of its child should be dropped.
  */
-export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | TypeState = null): Store<TypeState> => {
+export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | TypeState = null, noFreeze=false): Store<TypeState> => {
 	let destroyed = false
 	let state: TypeState = null
 	const emitter = createChangeEmitter()
@@ -82,6 +83,7 @@ export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | Type
 		} else {
 			state = nextState
 		}
+		noFreeze || deepFreeze(state)
 		emitter.emit(state, oldState)
 	}
 
@@ -93,6 +95,7 @@ export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | Type
 		} else {
 			state = init
 		}
+		noFreeze || deepFreeze(state)
 	}
 
 	const subscribe: Store<TypeState>['subscribe'] = (listener) => {
