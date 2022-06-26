@@ -33,7 +33,7 @@ const myStoreInit = (get, set) => {
 	return {
 		fullname: 'John Doe',
 		age: 18,
-		setAge(age) { set({...get(), age }) },
+		setAge(age) { set(state => ({...state, age })) },
 		setName(fullname) { set({...get(), fullname }) },
 	}
 }
@@ -52,7 +52,7 @@ const myStore = createStore(myStoreInit)
 		<p>Or use a functionnal approach. This is the prefered method.</p>
 		<Code lang="ts">{`myStore.set((state) => {...state, age:21})`}</Code>
 
-		<h3>Listen to changes</h3>
+		<h3>Listen for changes</h3>
 		<p>You can subscribe to store changes by using it's subscribe method</p>
 		<Code lang="ts">{`
 const changeListener = (newState, oldState) => { console.log("state changed") }
@@ -69,6 +69,8 @@ const unsubscribe = myStore.subscribe(changeListener)
 		</Message>
 		<Code lang="ts">{`myStore.destroy()`}</Code>
 
+		<p>You can check the store destroyed state like this:</p>
+		<Code lang="ts">myStore.isDestroyed()</Code>
 
 		<h3>Working with a scoped subset of a store</h3>
 		<p>
@@ -86,6 +88,33 @@ const dadNameStore = myStore.getScopeStore('dad.name')
 			So you can even get a scope store from another one
 			<Code lang="ts">{`const mumAgeStore = mumStore.getScopeStore('age')`}</Code>
 		</p>
+
+		<h2>Re-use an existing redux-like reducer</h2>
+		<p>Sometimes you want to migrate code for which you have already written logic into a reducer here's one way of re-using your reducer</p>
+		<Code lang="ts">{`
+const reducer(state, action) => {
+	switch(action.type){
+		case "SET_MUM_AGE": return {...state, mum:{...state.mum, age: action.age}}
+		//...
+	}
+}
+const setter2dispatcher = (setter, reducer) => {
+	return (action) => setter(state => reducer(state, action))
+}
+const dispatch = setter2dispatcher(myStore.set, reducer)
+dispatch({type: 'SET_MUM_AGE', age: 18})
+		`}</Code>
+		<p>Or you can decorate your store like this</p>
+		<Code lang="ts">{`
+const reduceStore = (reducer, store) => {
+	return {
+		...store,
+		dispatch: (action) => store.set(reducer(store.get(), action))
+	}
+}
+const myReduceStore = reduceStore(reducer, myStore)
+myReduceStore.dispatch({type: 'SET_MUM_AGE', age: 18})
+		`}</Code>
 
 		<h2>Integration with react</h2>
 		<p>

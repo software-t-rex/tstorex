@@ -37,6 +37,11 @@ describe('createStore', () => {
 		store.get().setIronDad()
 		expect(store.get().dad.fullname).toBe('Tony Stark')
 	})
+	it('should throw when trying to set its own state', () => {
+		const store = createStore(testState)
+		expect(() => store.set(store.get())).toThrow()
+		expect(() => store.set((s) => s)).toThrow()
+	})
 	it('should correctly init store state from no value', () => {
 		const store = createStore()
 		expect(store.get()).toBe(null)
@@ -59,6 +64,7 @@ describe('createStore', () => {
 		store.destroy()
 		try{ store.set(1) } catch (e) {}
 		expect(listener).not.toHaveBeenCalled()
+		expect(store.isDestroyed()).toBe(true)
 	})
 	it('should throw when trying to manipulate a destroyed store', () => {
 		const store = createStore<any>({foo: 'bar'})
@@ -119,6 +125,7 @@ describe('createStore', () => {
 			expect(() => mumStore.get()).toThrow()
 			expect(() => mumStore.subscribe(() => {})).toThrow()
 			expect(() => mumStore.set({fullname: 'Jamy Doe', age: 42})).toThrow()
+			expect(mumStore.isDestroyed()).toBe(true)
 		})
 		it('should trigger listener only on subset change', () => {
 			const store = createStore(testState2)
@@ -182,5 +189,75 @@ describe('createStore', () => {
 			expect(personStore.get()).toStrictEqual(null)
 			expect(store.get()).toStrictEqual({data:{person:null, pet: 'bill'}})
 		})
+		it('should allow to get store for non already exisiting path', () => {
+			const store = createStore<typeof testState & {pet?:{name:string}}>(testState)
+			const scopeStore = store.getScopeStore('pet')
+			expect(scopeStore.get()).toBe(undefined)
+		})
+		it('should notify a store for non already exisiting path when it become available', () => {
+			const listener = jest.fn()
+			const store = createStore<typeof testState & {pet?:{name:string}}>(testState)
+			const scopeStore = store.getScopeStore('pet')
+			scopeStore.subscribe(listener)
+			expect(scopeStore.get()).toBe(undefined)
+			store.set((s) => ({...s, pet: {name: 'bill'} }))
+			expect(listener).toHaveBeenCalled()
+			expect(scopeStore.get()).toStrictEqual({name: 'bill'})
+		})
 	})
+
+	describe('scoped store that are not in path anymore', () => {
+		it('should be notified that value goes to undefined', () => {
+			const listener = jest.fn()
+			const store = createStore(testState)
+			const personStore = store.getScopeStore('data.person')
+			personStore.subscribe(listener)
+			store.set({data:null})
+			expect(listener).toHaveBeenCalledWith(undefined, testState.data.person)
+			expect(personStore.get()).toBe(undefined)
+		})
+		it('should get notified with new value if in path again', () => {
+			const listener = jest.fn()
+			const store = createStore(testState)
+			const personStore = store.getScopeStore('data.person')
+			personStore.subscribe(listener)
+			store.set({data:null})
+			const jane = {fullname: 'Jane Black', age: 18}
+			store.set({data: {person: jane}})
+			expect(listener).toHaveBeenCalledWith(jane, undefined)
+			expect(personStore.get()).toStrictEqual(jane)
+		})
+	})
+
+	describe('nested scoped store', () => {
+		it('should work as expected', () => {
+			// quick all in on test to check it's working as intended
+			const observer1 = jest.fn()
+			const observer2 = jest.fn()
+			const observer3 = jest.fn()
+			const store = createStore(testState)
+			const scopeStore = store.getScopeStore('data')
+			const nestedStore = scopeStore.getScopeStore('person.fullname')
+			expect(nestedStore.get()).toBe('John Doe')
+			store.subscribe(observer1)
+			scopeStore.subscribe(observer2)
+			nestedStore.subscribe(observer3)
+			nestedStore.set('Jack Black')
+			expect(observer1).toHaveBeenCalled()
+			expect(observer2).toHaveBeenCalled()
+			expect(observer3).toHaveBeenCalled()
+			scopeStore.set({person:null})
+			expect(observer1).toHaveBeenCalledTimes(2)
+			expect(observer2).toHaveBeenCalledTimes(2)
+			expect(observer3).toHaveBeenCalledTimes(2)
+			expect(observer2).toHaveBeenCalledWith({person:null}, {person: {fullname: 'Jack Black', age:18}})
+			expect(observer3).toHaveBeenCalledWith(undefined, 'Jack Black')
+			store.set({data:{person: {fullname: 'Jane Doe', age: 23}}})
+			expect(observer1).toHaveBeenCalledTimes(3)
+			expect(observer2).toHaveBeenCalledTimes(3)
+			expect(observer3).toHaveBeenCalledTimes(3)
+			expect(nestedStore.get()).toBe('Jane Doe')
+		})
+	})
+
 })

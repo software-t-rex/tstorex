@@ -1,6 +1,7 @@
 import { deepFreeze } from './deepFreeze'
-import type { PathKey, Store, StoreInitializer } from './type'
+import type { PathKey, Store, StoreInitializer, TranferableScope } from './type'
 
+//@TODO add documentation for deepFreezed objects and that setter should never return state directly
 
 const createChangeEmitter = () => {
 	const subscriptions = new Map<Symbol, Function>()
@@ -16,12 +17,14 @@ const createChangeEmitter = () => {
 }
 
 /** extract a scoped store from given store and property name in store  */
-const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Partial<Store<TypeState>>, propName: Key): Store<TypeState[Key]> => {
-	const get: Store<TypeState[Key]>['get'] = () => store.get()[propName]
+const getScopedStore = <TypeState, Key extends keyof TypeState>(store: TranferableScope<TypeState>, propName: Key): Store<TypeState[Key]> => {
+	const isDestroyed = store.isDestroyed
+
+	const get: Store<TypeState[Key]>['get'] = () => store.get()?.[propName]
 
 	const set: Store<TypeState[Key]>['set'] = (nextState) => {
 		const state = store.get()
-		const newState = (nextState instanceof Function) ? nextState(state[propName]) : nextState
+		const newState = (nextState instanceof Function) ? nextState(state?.[propName]) : nextState
 		store.set({ ...state, [propName]: newState })
 	}
 
@@ -33,13 +36,13 @@ const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Partial<S
 	}
 
 	const getScopeStore: Store<TypeState[Key]>['getScopeStore'] = (path) => {
-		return getScopeStoreFromPath({ get, set, subscribe }, path as any)
+		return getScopeStoreFromPath({ get, set, subscribe, isDestroyed }, path as any)
 	}
 
-	return { get, set, subscribe, getScopeStore }
+	return { get, set, subscribe, getScopeStore, isDestroyed }
 }
 
-const getScopeStoreFromPath = <T, Path extends PathKey<T> & string>(store: Partial<Store<T>>, path: Path) => {
+const getScopeStoreFromPath = <TypeState, Path extends PathKey<TypeState> & string>(store: TranferableScope<TypeState>, path: Path) => {
 	const props = path.split('.')
 	const scope = props.reduce(
 		<T,>(_store: Store<T>, propName: keyof T) => getScopedStore(_store, propName)
@@ -59,6 +62,7 @@ const getScopeStoreFromPath = <T, Path extends PathKey<T> & string>(store: Parti
  * - **destroy()**: unsubscibe all listener and reste store state to null, any attempt to manipulate
  *   the store or any of its child store after that will throw.
  *   The store can't be re-used and any reference in your code to the store or any of its child should be dropped.
+ * - **isDestroyed()**: will return true if the store is destroyed
  */
 export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | TypeState = null, noFreeze=false): Store<TypeState> => {
 	let destroyed = false
@@ -69,7 +73,7 @@ export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | Type
 			throw new Error(msg || "Can't access a destroyed store")
 		}
 	}
-
+	const isDestroyed = () => destroyed
 	const get: Store<TypeState>['get'] = () => {
 		throwIfDestroyed("Can't read from a destroyed store")
 		return state
@@ -79,9 +83,12 @@ export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | Type
 		const oldState = state
 		throwIfDestroyed("Can't set a destroyed store")
 		if (nextState instanceof Function) {
-			state = nextState(state)
+			state = nextState(oldState)
 		} else {
 			state = nextState
+		}
+		if (state === oldState) {
+			throw new Error("Store should never be set to its own state!")
 		}
 		noFreeze || deepFreeze(state)
 		emitter.emit(state, oldState)
@@ -110,8 +117,8 @@ export const createStore = <TypeState,>(init: StoreInitializer<TypeState> | Type
 	}
 
 	const getScopeStore: Store<TypeState>['getScopeStore'] = (path) => {
-		return getScopeStoreFromPath({ get, set, subscribe }, path as any)
+		return getScopeStoreFromPath({ get, set, subscribe, isDestroyed }, path as any)
 	}
 
-	return { get, set, subscribe, destroy, getScopeStore }
+	return { get, set, subscribe, destroy, getScopeStore, isDestroyed }
 }

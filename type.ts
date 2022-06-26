@@ -35,4 +35,6 @@ export interface Store<TypeState> {
 	getScopeStore?: <Key extends PathKey<TypeState>>(propName: Key) => Store<PathValue<TypeState, Key>>
 	/** unbind all listener bound to the store and reset state value to null */
 	destroy?: () => void
+    isDestroyed: () => boolean
 }
+export interface TranferableScope<TypeState> extends Omit<Store<TypeState>, 'destroy' | 'getScopeStore'>{}
