@@ -1,2 +1,3 @@
+export type { PathProp, PathValue } from '../types/Paths'
+export type { changeListener, NextState, Store, StoreInitializer } from './type'
 export * from './store'
-export type { changeListener, NextState, PathKey, PathValue, Store, StoreInitializer } from './type'

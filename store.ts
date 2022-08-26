@@ -1,5 +1,6 @@
-import { deepFreeze } from './deepFreeze'
-import type { PathKey, Store, StoreInitializer, TranferableScope } from './type'
+import type { PathProp } from '../types/Paths'
+import type { Store, StoreInitializer, TranferableScope } from './type'
+import { deepFreeze } from '../deepFreeze'
 
 //@TODO add documentation for deepFreezed objects and that setter should never return state directly
 
@@ -42,7 +43,7 @@ const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Tranferab
 	return { get, set, subscribe, getScopeStore, isDestroyed }
 }
 
-const getScopeStoreFromPath = <TypeState, Path extends PathKey<TypeState> & string>(store: TranferableScope<TypeState>, path: Path) => {
+const getScopeStoreFromPath = <TypeState, Path extends PathProp<TypeState> & string>(store: TranferableScope<TypeState>, path: Path) => {
 	const props = path.split('.')
 	const scope = props.reduce(
 		<T,>(_store: Store<T>, propName: keyof T) => getScopedStore(_store, propName)
