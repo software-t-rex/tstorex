@@ -1,4 +1,5 @@
 import { Message } from "T-REx-UI/components/Feedback"
+import { StoryLink, StoryToc } from "T-REx-UI/stories/helpers"
 import { Code } from "../../stories/helpers/Code"
 
 export default {
@@ -16,6 +17,7 @@ export default {
 export const Store = () => {
 	return <>
 		<h1>Store</h1>
+		<StoryToc opened/>
 		<h2>Introduction</h2>
 		<p>
 			T-REx-UI comes with own store implementation.
@@ -118,8 +120,12 @@ myReduceStore.dispatch({type: 'SET_MUM_AGE', age: 18})
 
 		<h2>Integration with react</h2>
 		<p>
-			In order to ease usage of Store in react we provide two methods to help you createSyncStore and useSyncStore.
-			See hooks/useSyncStore for more details.
+			In order to ease usage of Store in react we provide two methods to help you
+			<ul>
+				<li>createSyncStore</li>
+				<li>useSyncStore</li>
+			</ul>
+			See <StoryLink story="Hooks/usesyncstore/useSyncStore">hooks/useSyncStore</StoryLink>  for more details.
 		</p>
 	</>
 }
