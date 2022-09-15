@@ -1,5 +1,5 @@
 import { Message } from "T-REx-UI/components/Feedback"
-import { Code } from "../../../../.storybook/Code"
+import { Code } from "../../stories/helpers/Code"
 
 export default {
   title: 'utils/store',
