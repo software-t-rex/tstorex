@@ -22,7 +22,7 @@ export const Store = () => {
 		<p>
 			T-REx-UI comes with own store implementation.
 			This is a really simple store you can use with or without react.
-			It is written in typescript and should be typesage, you will have full code completion when working with it if your IDE supports it.
+			It is written in typescript and should be typesafe, you will have full code completion when working with it if your IDE supports it.
 		</p>
 
 		<h2>Create a store</h2>

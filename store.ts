@@ -25,8 +25,16 @@ const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Tranferab
 
 	const set: Store<TypeState[Key]>['set'] = (nextState) => {
 		const state = store.get()
-		const newState = (nextState instanceof Function) ? nextState(state?.[propName]) : nextState
-		store.set({ ...state, [propName]: newState })
+		const newPropState = (nextState instanceof Function) ? nextState(state?.[propName]) : nextState
+		// const newState = Array.isArray(state) ? [...state] as TypeState : { ...state }
+		const newState = (Array.isArray(state)
+			? [...state]
+			: typeof state === 'object'
+				? { ...state }
+				: state
+		) as TypeState
+		newState[propName] = newPropState
+		store.set(newState)
 	}
 
 	const subscribe: Store<TypeState[Key]>['subscribe'] = (listener) => {

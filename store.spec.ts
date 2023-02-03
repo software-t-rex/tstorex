@@ -1,4 +1,5 @@
 import { createStore } from "./store"
+import { StoreInitializer } from "./type"
 
 const testState = {data: {person: {fullname: 'John Doe', age: 18}}}
 const testStateString = '{"data":{"person":{"fullname":"John Doe","age":18}}}'
@@ -257,6 +258,14 @@ describe('createStore', () => {
 			expect(observer2).toHaveBeenCalledTimes(3)
 			expect(observer3).toHaveBeenCalledTimes(3)
 			expect(nestedStore.get()).toBe('Jane Doe')
+		})
+		it('should preserve Array ancestors as Array', () => {
+			const store = createStore({parents: [testState2.dad, testState2.mum]})
+			const mumStoreName = store.getScopeStore('parents.1.fullname')
+			expect(mumStoreName.get()).toBe('Jane Doe')
+			mumStoreName.set('Jane Fonda')
+			expect(mumStoreName.get()).toBe('Jane Fonda')
+			expect(Array.isArray(store.get().parents)).toBe(true)
 		})
 	})
 
