@@ -1,3 +1,4 @@
+import { vi } from "vitest"
 import { createStore } from "./store"
 import { StoreInitializer } from "./type"
 
@@ -51,7 +52,7 @@ describe('createStore', () => {
 	})
 	it('should allow to subscribe to change on the store', () => {
 		const store = createStore()
-		const listener = jest.fn()
+		const listener = vi.fn()
 		store.subscribe(listener)
 		store.set(() => 1)
 		expect(listener).toBeCalledTimes(1)
@@ -60,7 +61,7 @@ describe('createStore', () => {
 	})
 	it('should allow to destroy the store', () => {
 		const store = createStore<any>({foo: 'bar'})
-		const listener = jest.fn()
+		const listener = vi.fn()
 		store.subscribe(listener)
 		store.destroy()
 		try{ store.set(1) } catch (e) {}
@@ -89,7 +90,7 @@ describe('createStore', () => {
 	describe('store.subscribe', () => {
 		it('should allow to be notified when state change', () => {
 			const store = createStore(testState2)
-			const listener = jest.fn()
+			const listener = vi.fn()
 			store.subscribe(listener)
 			store.set((s) => ({...s, mum: {fullname: 'Jane Black', age: s.mum.age}}))
 			const state2 = store.get()
@@ -102,7 +103,7 @@ describe('createStore', () => {
 		})
 		it('should return a method to stop listener', () => {
 			const store = createStore(testState)
-			const listener = jest.fn()
+			const listener = vi.fn()
 			const unbind = store.subscribe(listener)
 			store.set({data: {person: null}})
 			expect(listener).toHaveBeenCalledTimes(1)
@@ -132,8 +133,8 @@ describe('createStore', () => {
 			const store = createStore(testState2)
 			const mumStore = store.getScopeStore('mum')
 			const dadStore = store.getScopeStore('dad')
-			const listener1 = jest.fn()
-			const listener2 = jest.fn()
+			const listener1 = vi.fn()
+			const listener2 = vi.fn()
 			const newMum = {fullname:'Jane Doe', age: 44}
 			mumStore.subscribe(listener1)
 			dadStore.subscribe(listener2)
@@ -152,7 +153,7 @@ describe('createStore', () => {
 		it('should trigger parent store listener on change', () => {
 			const store = createStore(testState2)
 			const mumStore = store.getScopeStore('mum')
-			const listener = jest.fn()
+			const listener = vi.fn()
 			store.subscribe(listener)
 			mumStore.set((s) => ({...s, age: 18}))
 			expect(listener).toHaveBeenCalledTimes(1)
@@ -164,7 +165,7 @@ describe('createStore', () => {
 		it('should trigger scoped listener on parent store change if change is in scope', () => {
 			const store = createStore(testState2)
 			const mumStore = store.getScopeStore('mum')
-			const listener = jest.fn()
+			const listener = vi.fn()
 			mumStore.subscribe(listener)
 			store.set((s) => ({...s, dad: {...s.dad, age: 18}}))
 			expect(listener).not.toHaveBeenCalled()
@@ -175,7 +176,7 @@ describe('createStore', () => {
 		it('should work with path too', () => {
 			const store = createStore(testState)
 			const personStore = store.getScopeStore('data.person')
-			const listener = jest.fn()
+			const listener = vi.fn()
 			expect(personStore.get()).toStrictEqual({fullname: 'John Doe', age: 18})
 			personStore.subscribe(listener)
 			store.set((s) => ({...s, data: {...s.data, pet: "bill" }}))
@@ -196,7 +197,7 @@ describe('createStore', () => {
 			expect(scopeStore.get()).toBe(undefined)
 		})
 		it('should notify a store for non already exisiting path when it become available', () => {
-			const listener = jest.fn()
+			const listener = vi.fn()
 			const store = createStore<typeof testState & {pet?:{name:string}}>(testState)
 			const scopeStore = store.getScopeStore('pet')
 			scopeStore.subscribe(listener)
@@ -209,7 +210,7 @@ describe('createStore', () => {
 
 	describe('scoped store that are not in path anymore', () => {
 		it('should be notified that value goes to undefined', () => {
-			const listener = jest.fn()
+			const listener = vi.fn()
 			const store = createStore(testState)
 			const personStore = store.getScopeStore('data.person')
 			personStore.subscribe(listener)
@@ -218,7 +219,7 @@ describe('createStore', () => {
 			expect(personStore.get()).toBe(undefined)
 		})
 		it('should get notified with new value if in path again', () => {
-			const listener = jest.fn()
+			const listener = vi.fn()
 			const store = createStore(testState)
 			const personStore = store.getScopeStore('data.person')
 			personStore.subscribe(listener)
@@ -233,9 +234,9 @@ describe('createStore', () => {
 	describe('nested scoped store', () => {
 		it('should work as expected', () => {
 			// quick all in on test to check it's working as intended
-			const observer1 = jest.fn()
-			const observer2 = jest.fn()
-			const observer3 = jest.fn()
+			const observer1 = vi.fn()
+			const observer2 = vi.fn()
+			const observer3 = vi.fn()
 			const store = createStore(testState)
 			const scopeStore = store.getScopeStore('data')
 			const nestedStore = scopeStore.getScopeStore('person.fullname')
