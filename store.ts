@@ -1,6 +1,6 @@
 import type { PathProp } from '../types/Paths'
 import type { Store, StoreInitializer, TranferableScope } from './type'
-import { deepFreeze } from '../deepFreeze'
+import { deepFreeze } from './deepFreeze'
 
 //@TODO add documentation for deepFreezed objects and that setter should never return state directly
 
