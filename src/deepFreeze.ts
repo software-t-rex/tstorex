@@ -12,14 +12,14 @@ export const deepFreeze = <T>(obj:T): DeepReadonly<T> => {
 	}
 	const props = Object.getOwnPropertyNames(obj)
 	props.forEach((prop) => {
-		const value = obj[prop]
+		const value = (obj as any)[prop]
 		if (
 			value
 			&& value instanceof Object
 			&& !('BYTES_PER_ELEMENT' in value)
 			&& !Object.isFrozen(value)
 		) {
-			obj[prop] = deepFreeze(value)
+			(obj as any)[prop] = deepFreeze(value)
 		}
 	})
 	return Object.freeze(obj) as DeepReadonly<T>
