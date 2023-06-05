@@ -1,38 +1,46 @@
-export type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+export type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+export type Nullable<TypeState> = TypeState | null | undefined
 export type PathIdentifier = string | number
-export type GenericObject = Record<PathIdentifier, any>
+export type GenericObject = Record<string, any>
 export type PathProp<T extends GenericObject, Depth extends Prev[number] = 4> = [Depth] extends [never] ? never : keyof {
-		[key in keyof T as T[key] extends GenericObject
-				? (key extends `${infer rootKey}.${PathIdentifier}`
-						? PathProp<T[rootKey], Prev[Depth]>
-						: key | `${PathIdentifier & key}.${(string|number) & PathProp<T[key], Prev[Depth]>}`)
-				: key
-		]: true
+	[key in keyof T as T[key] extends GenericObject
+			? (key extends `${infer rootKey}.${PathIdentifier}`
+					? PathProp<T[rootKey], Prev[Depth]>
+					: key | `${PathIdentifier & key}.${(string|number) & PathProp<T[key], Prev[Depth]>}`)
+			: key
+	]: true
 } & (string | number)
 export type PathValue<T extends GenericObject, K extends PathProp<T, Depth> | string, Depth extends Prev[number] = 4> = [Depth] extends [never] ? never : {
-		[key in K]: key extends keyof T
-				? T[key]
-				: key extends `${infer rootkey}.${infer restPath}`
-						? PathValue<T[rootkey], restPath, Depth>
-						: T[key]
+	[key in K]: key extends keyof T
+			? T[key]
+			: key extends `${infer rootkey}.${infer restPath}`
+					? PathValue<T[rootkey], restPath, Depth>
+					: T[key]
 }[K]
-export type Nullable<TypeState> = TypeState | null | undefined
-export type NextState<TypeState> = TypeState | ((state:TypeState)=>TypeState)
-export type StoreInitializer<TypeState=any> = ( get: ()=>TypeState, set: (nextState: NextState<TypeState>)=>void ) => TypeState
+
+export interface StoreOptions {
+	/**
+	 * By default state in store are made immutable (deeply frozen), unless this options is set to false.
+	 * You should not need to set this option to false, unless you have a very specific use case.
+	 */
+	noFreeze?: boolean
+	/**
+	 * By default setting store state to strictly equal same state (=== for anything that it's not a primitive value)
+	 * won't do anything, and won't trigger any change listener.
+	 * Setting this option to true will throw an error if you try to set to the current state to itself, unless it's a primitive value.
+	 * This won't affect the behavior of ScopedStore (which will always trigger change listeners).
+	 */
+	noStrictEqual?: boolean
+}
+export type NextState<TypeState> = TypeState | ((state: TypeState) => TypeState)
+export type StoreInitializer<TypeState = any> = (get: () => TypeState, set: (nextState: NextState<TypeState>) => void) => TypeState
 export type ChangeListener<TypeState> = (newState: TypeState, oldState?: TypeState) => void
-export type ScopePath<TypeState> = TypeState extends GenericObject ? PathProp<TypeState> : (string | number)
-
-export type ScopeGetter<TypeState> = <Key extends ScopePath<TypeState>>(propName: Key) => (TypeState extends GenericObject
-	? StoreInterface<PathValue<TypeState, Key>>
-	: (Key extends keyof TypeState ? StoreInterface<TypeState[Key]> : StoreInterface<any>)
-)
-export type ScopeExtendedGetter<TypeState> = <Key extends ScopePath<TypeState>>(propName: Key) => (TypeState extends GenericObject
-	? StoreExtended<StoreInterface<PathValue<TypeState, Key>>, PathValue<TypeState, Key>>
-	: (Key extends keyof TypeState ? StoreExtended<StoreInterface<TypeState[Key]>, TypeState[Key]> : StoreExtended<StoreInterface<any>, any>)
-)
-export type StoreExtensionApi = Record<string,Function>
-
-export interface StoreInterface<TypeState> {
+export type ScopePath<TypeState, Depth extends Prev[number] = 4> = TypeState extends GenericObject ? PathProp<TypeState, Depth> & string: string
+export type ScopeValue<TypeState, Key extends ScopePath<TypeState, Depth>, Depth extends Prev[number] = 4> = TypeState extends GenericObject
+	? PathValue<TypeState, Key, Depth>
+	: Key extends keyof TypeState ? TypeState[Key] : any
+export type GetScopeStore<TypeState, Depth extends Prev[number] = 4> = <Key extends ScopePath<TypeState, Depth>>(propName: Key) => Store<ScopeValue<TypeState, Key, Depth>>
+export interface StoreInterface<TypeState=any> {
 	/** Get snapshot state. */
 	get: () => TypeState
 	/** Set a new state into the store. */
@@ -41,50 +49,11 @@ export interface StoreInterface<TypeState> {
 	 * Bind a listener which will be called on any state change within the store.
 	 * A second optional parameter equalityCheck can be passed. It should return wether the two states are considered the same or not
 	 */
-	subscribe: (listener: ChangeListener<TypeState>, equalityCheck?:(newState: TypeState, oldState: TypeState) => boolean) => () => void
-	/** Return a StoreScoped scoped to only a part of the initial state (without a destroy method). */
-	getScopeStore: ScopeGetter<TypeState>
+	subscribe: (listener: ChangeListener<TypeState>, equalityCheck?: (newState: TypeState, oldState: TypeState) => boolean) => () => void
 	/** Unbind all listener bound to the store and reset state value to null. */
 	isDestroyed: () => boolean
 }
-export type StoreExtender<TypeState> = (store: StoreInterface<TypeState>) => StoreExtensionApi
-export type Store<TypeState> = StoreInterface<TypeState> & {
-	/**
-	 * Use this to discard your store.
-	 * It will:
-	 * 	- set state to null allowing garbage collection
-	 * 	- unbind all listener bound to the store
-	 * Any subsequent call to Store.get or Store.set on a destroyed store will throw an Error
-	 * the destroy method only exists on toplevel store, you can't call it on StoreScoped
-	 */
-	destroy: () => void
-	/**
-	 * ## Store.extends
-	 * It will extends your store capabilities by applying a bunch of StoreExtenders. The capabilities will also be
-	 * added to any StoreScoped you will get with the method Scope.getScopeStore.
-	 * If default extenders has been set, then they will be applied before the one passed to that method.
-	 * In order for TS to allow you to call extended methods without warning you should set your store reference to
-	 * the returned value of this methods (this is in fact the same object, it is only due to TS limitation):
-	 * ```ts
-	 * // prefer
-	 * const store = createStore(initializer).extends([dispatchExtender])
-	 * const dispacth = store.dispatcher(reducer) // won't complain
-	 * // over
-	 * const store = createStore(initializer)
-	 * store.extends()
-	 * const dispacth = store.dispatcher(reducer) // TS will complain
-	 * ```
-	 * You can set default extenders by using the method ```createStore.setDefaultExtenders()```
-	 * Calling this method without argument will apply only the default extenders
-	 * @param extenders
-	 * @returns
-	 */
-	extends: (extenders?:StoreExtender<TypeState>[]) => StoreExtended<Store<TypeState>, TypeState>
-}
-/** This is a StoreScoped, scoped to a subpath of the parent Store. It doesn't implement destroy or extends methods. */
-export type StoreScoped<TypeState> = StoreInterface<TypeState>
-/** StoreExtended is just a convenience to mark Store and StoreScoped as extended and let them call new methods without TS complains. */
-export type StoreExtended<S extends StoreInterface<TypeState>, TypeState> = Omit<S, 'getScopeStore'> & StoreExtensionApi & {
-	/** Return a child store scoped to only a part of the initial state and without the destroy method. */
-	getScopeStore: ScopeExtendedGetter<TypeState>
+export type Store<TypeState=any> = StoreInterface<TypeState> & {
+	/** Return a StoreScoped scoped to only a part of the initial state (without a destroy method). */
+	getScopeStore: GetScopeStore<TypeState, 10>
 }

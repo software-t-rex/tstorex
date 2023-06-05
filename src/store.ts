@@ -1,4 +1,4 @@
-import type { Nullable, ScopeExtendedGetter, ScopePath, Store, StoreExtended, StoreExtender, StoreInitializer, StoreInterface, StoreScoped } from './type'
+import type { GetScopeStore, Nullable, ScopePath, Store, StoreInitializer, StoreInterface, StoreOptions } from './type'
 import { deepFreeze } from './deepFreeze'
 
 //@TODO add documentation for deepFreezed objects and that setter should never return state directly
@@ -19,44 +19,20 @@ const createChangeEmitter = () => {
 	}
 }
 
-
-let defaultExtenders:StoreExtender<any>[] = []
-
-/**
- * apply extenders methods to a store and all scopeStore derivated from it
- */
-export const extendStore = <TypeState>(store: StoreInterface<TypeState>, extenders: StoreExtender<any>[]):StoreExtended<typeof store, TypeState>|StoreInterface<TypeState> => {
-	if (!extenders.length) {
-		return store
-	}
-	// automatically apply extenders to scopeStores
-	const { getScopeStore } = store
-	store.getScopeStore = (<Key extends ScopePath<TypeState>>(propName: Key) => {
-		return extendStore(getScopeStore(propName), extenders)
-	}) as ScopeExtendedGetter<TypeState>
-	// store.getScopeStore = (path) => extendStore(getScopeStore(path), extenders)
-	extenders.forEach((extender) => {
-		const methods = extender(store)
-		Object.entries(methods).forEach(([k,v]) => (store as any)[k] = v)
-		store = store as typeof store & typeof methods
-	})
-	return store// as StoreExtended<typeof store, TypeState>
-}
-
 /** extract a scoped store from given store and property name in store  */
-const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Omit<StoreInterface<TypeState>, 'getScopeStore'>, propName: Key): StoreScoped<TypeState[Key]> => {
+const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Omit<StoreInterface<TypeState>, 'getScopeStore'>, propName: Key): Store<TypeState[Key]> => {
 	const isDestroyed = store.isDestroyed
 
-	const get: Store<TypeState[Key]>['get'] = () => (store.get() as any)?.[propName]
+	const get: StoreInterface<TypeState[Key]>['get'] = () => (store.get() as any)?.[propName]
 
-	const set: Store<TypeState[Key]>['set'] = (nextState) => {
+	const set: StoreInterface<TypeState[Key]>['set'] = (nextState) => {
 		store.set((state) => {
 			const newPropState = (nextState instanceof Function) ? nextState((state as any)?.[propName]) : nextState
 			if (Array.isArray(state)) {
 				const newState = [...state]
 				newState[propName as any] = newPropState
 				return newState as TypeState
-			} else if (typeof state === 'object') {
+			} else if (typeof state === 'object' && state !== null) {
 				return {...state, [propName]:newPropState} as TypeState
 			} else if (state === undefined || state === null) {
 				return {[propName]:newPropState} as TypeState
@@ -65,21 +41,21 @@ const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Omit<Stor
 		})
 	}
 
-	const subscribe: Store<TypeState[Key]>['subscribe'] = (listener) => {
+	const subscribe: StoreInterface<TypeState[Key]>['subscribe'] = (listener) => {
 		const _listener = (newState: Nullable<TypeState>, oldState: Nullable<TypeState>) => {
 			newState?.[propName] !== oldState?.[propName] && listener(newState?.[propName] as TypeState[Key], oldState?.[propName])
 		}
 		return store.subscribe(_listener)
 	}
 
-	const getScopeStore: Store<TypeState[Key]>['getScopeStore'] = (path) => {
+	const getScopeStore = (path:string) => {
 		return getScopeStoreFromPath({ get, set, subscribe, isDestroyed }, path)
 	}
 
-	return { get, set, subscribe, getScopeStore, isDestroyed }
+	return { get, set, subscribe, getScopeStore, isDestroyed } as Store<TypeState[Key]>
 }
 
-const getScopeStoreFromPath = <TypeState, Path extends ScopePath<TypeState>>(store: Omit<StoreInterface<TypeState>, 'getScopeStore'>, path: Path) => {
+const getScopeStoreFromPath = <TypeState, Path extends string>(store: StoreInterface<TypeState>, path: Path) => {
 	const props = String(path).split('.')
 	const scope = props.reduce(
 		<T>(_store: Omit<StoreInterface<T>, 'getScopeStore'>, propName: keyof T) => getScopedStore(_store, propName)
@@ -87,7 +63,8 @@ const getScopeStoreFromPath = <TypeState, Path extends ScopePath<TypeState>>(sto
 	)
 	return scope
 }
-
+const primitives = ["string", "number", "bigint", "boolean", "undefined", "symbol"]
+const isPrimitive = (value: any) => value === null || primitives.includes(typeof value)
 /**
  * # createStore
  * can be called with an initial state value or a StoreInitializer and will return a new Store
@@ -102,9 +79,20 @@ const getScopeStoreFromPath = <TypeState, Path extends ScopePath<TypeState>>(sto
  * - **isDestroyed()**: will return true if the store is destroyed
  * - **extends([StoreExtender, ...])**: can be used to extend a store
  */
-export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState> | TypeState> = null, noFreeze = false) => {
+export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState> | TypeState> = null, opts?:StoreOptions): Store<TypeState> & {
+	/**
+	 * Use this to discard your store.
+	 * It will:
+	 * 	- set state to null allowing garbage collection
+	 * 	- unbind all listener bound to the store
+	 * Any subsequent call to Store.get or Store.set on a destroyed store will throw an Error
+	 * the destroy method only exists on toplevel store, you can't call it on StoreScoped
+	 */
+	destroy:()=>void
+} => {
 	let destroyed = false
 	let state: Nullable<TypeState> = null
+	const {noFreeze = false, noStrictEqual = false} = opts || {}
 	const emitter = createChangeEmitter()
 	const throwIfDestroyed = (msg: string) => {
 		if (destroyed) {
@@ -112,12 +100,12 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 		}
 	}
 	const isDestroyed = () => destroyed
-	const get: Store<TypeState>['get'] = () => {
+	const get: StoreInterface<TypeState>['get'] = () => {
 		throwIfDestroyed("Can't read from a destroyed store")
 		return state as TypeState
 	}
 
-	const set: Store<TypeState>['set'] = (nextState) => {
+	const set: StoreInterface<TypeState>['set'] = (nextState) => {
 		const oldState = state
 		throwIfDestroyed("Can't set a destroyed store")
 		if (nextState instanceof Function) {
@@ -126,7 +114,10 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 			state = nextState
 		}
 		if (state === oldState) {
-			throw new Error("Store should never be set to its own state!")
+			if (noStrictEqual && !isPrimitive(state)) {
+				throw new Error("Store should never be set to its own state!")
+			}
+			return // simply ignore if state are the same
 		}
 		noFreeze || deepFreeze(state)
 		emitter.emit(state, oldState)
@@ -143,30 +134,20 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 		noFreeze || deepFreeze(state)
 	}
 
-	const subscribe: Store<TypeState>['subscribe'] = (listener, equalityCheck) => {
+	const subscribe: StoreInterface<TypeState>['subscribe'] = (listener, equalityCheck) => {
 		throwIfDestroyed("Can't subscribe to a destroyed store")
 		return emitter.subscribe(listener, equalityCheck)
 	}
 
-	const destroy: Store<TypeState>['destroy'] = () => {
+	const destroy = () => {
 		emitter.clear()
 		set(null as any)
 		destroyed = true
 	}
 
-	const getScopeStore: Store<TypeState>['getScopeStore'] = (path:ScopePath<TypeState>) => {
-		return getScopeStoreFromPath({ get, set, subscribe, isDestroyed }, path)
-	}
-	const store:any = { get, set, subscribe, destroy, getScopeStore, isDestroyed }
-	store.extends = (extenders?: StoreExtender<TypeState>[]) => extendStore(store, extenders ? [...new Set([...defaultExtenders, ...extenders])]  : defaultExtenders)
+	const getScopeStore:GetScopeStore<TypeState> = ((path:ScopePath<TypeState>) => {
+		return getScopeStoreFromPath({ get, set, subscribe, isDestroyed }, path as string)
+	})
 
-	return store as Store<TypeState>
-}
-
-/**
- * Add StoreExtenders as default extenders. Default extenders are automatically applied when you call the Store.extends() method.
- * To reset to no extenders at all you can pass null as parameter.
- */
-createStore.setDefaultExtenders = (extenders:StoreExtender<any>[]|null) => {
-	defaultExtenders = extenders ?  [...new Set([...defaultExtenders, ...extenders])] : []
+	return { get, set, subscribe, destroy, getScopeStore, isDestroyed }
 }

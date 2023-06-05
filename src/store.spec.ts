@@ -1,6 +1,6 @@
-import { vi } from "vitest"
-import { createStore } from "./store"
-import { StoreInitializer } from "./type"
+import { vi, describe, it, expect } from "vitest"
+import { createStore} from "./store"
+import { ScopePath, StoreInitializer} from "./type"
 
 const testState = {data: {person: {fullname: 'John Doe', age: 18}}}
 const testStateString = '{"data":{"person":{"fullname":"John Doe","age":18}}}'
@@ -19,11 +19,11 @@ describe('createStore', () => {
 		expect(store.get()).toBe(1)
 	})
 	it('should correctly init store state from function', () => {
-		const store = createStore((get, set) => testState)
+		const store = createStore(() => testState)
 		expect(JSON.stringify(store.get())).toBe(testStateString)
 	})
 	it('should pass working getter and setter to initializer function', () => {
-		const initializer = (get, set) => ({
+		const initializer:StoreInitializer = (get, set) => ({
 			...testState2,
 			getMumName: () => get().mum.fullname,
 			setIronDad: () => {
@@ -39,10 +39,10 @@ describe('createStore', () => {
 		store.get().setIronDad()
 		expect(store.get().dad.fullname).toBe('Tony Stark')
 	})
-	it('should throw when trying to set its own state', () => {
+	it('should not throw when trying to set its own state', () => {
 		const store = createStore(testState)
-		expect(() => store.set(store.get())).toThrow()
-		expect(() => store.set((s) => s)).toThrow()
+		expect(() => store.set(store.get())).not.toThrow()
+		expect(() => store.set((s) => s)).not.toThrow()
 	})
 	it('should correctly init store state from no value', () => {
 		const store = createStore()
@@ -78,14 +78,90 @@ describe('createStore', () => {
 	it('state should be immutable', () => {
 		const store = createStore(testState2)
 		const state = store.get()
-		expect(() => state.mum = null).toThrow()
+		expect(() => {state.mum = {fullname:"error", age:0}}).toThrow()
 		store.set({...testState2, mum: {...testState2.mum, age:0}})
-		expect(() => store.get().mum = null).toThrow()
+		expect(() => {state.mum = {fullname:"error", age:0}}).toThrow()
 		const subStore = store.getScopeStore('dad')
 		const dad = subStore.get()
 		expect(() => dad.fullname = 'John Snow').toThrow()
 		subStore.set({...dad, fullname: 'John Black'})
 		expect(Object.isFrozen(store.get().dad)).toBe(true)
+	})
+	describe('options', () => {
+		describe('noFreeze', () => {
+			it('should not freeze state when noFreeze is true', () => {
+				const initState = {dad:{...testState2.dad}, mum:{...testState2.mum}}
+				const store = createStore(initState, {noFreeze: true})
+				const state = store.get()
+				expect(Object.isFrozen(state)).toBe(false)
+				expect(() => {state.mum = {fullname:"maman", age:40}}).not.toThrow()
+				store.set({...initState, mum: {...initState.mum, age:0}})
+				expect(() => {state.mum = {fullname:"mummy", age:60}}).not.toThrow()
+				const subStore = store.getScopeStore('dad')
+				const dad = subStore.get()
+				expect(() => dad.fullname = 'John Snow').not.toThrow()
+				subStore.set({...dad, fullname: 'John Black'})
+				expect(Object.isFrozen(store.get().dad)).toBe(false)
+			})
+			it("should freeze state when noFreeze is false", () => {
+				const initState = {dad:{...testState2.dad}, mum:{...testState2.mum}}
+				const store = createStore(initState, {noFreeze: false})
+				const state = store.get()
+				expect(Object.isFrozen(state)).toBe(true)
+				expect(() => {state.mum = {fullname:"maman", age:40}}).toThrow()
+				store.set({...initState, mum: {...initState.mum, age:0}})
+				expect(() => {state.mum = {fullname:"mummy", age:60}}).toThrow()
+				const subStore = store.getScopeStore('dad')
+				const dad = subStore.get()
+				expect(() => dad.fullname = 'John Snow').toThrow()
+				expect(Object.isFrozen(store.get().dad)).toBe(true)
+			})
+		})
+		describe('noSrictEqual', () => {
+			describe("when false", () => {
+				it("should not throw when trying to set the same state", () => {
+					const store = createStore(testState2, {noStrictEqual: false})
+					expect(() => store.set(testState2)).not.toThrow()
+				})
+				it("should not trigger event listener when setting to the same state", () => {
+					const fn = vi.fn()
+					const store = createStore(testState2, {noStrictEqual: false})
+					const unsubscribe = store.subscribe(fn)
+					expect(() => store.set(store.get())).not.toThrow()
+					expect(fn).not.toHaveBeenCalled()
+					store.set((s) => ({...s, mum: {fullname: 'Jane Black', age: s.mum.age}}))
+					expect(fn).toHaveBeenCalledTimes(1)
+					store.set(store.get())
+					expect(fn).toHaveBeenCalledTimes(1)
+					unsubscribe()
+				})
+			})
+			describe("when true", () => {
+				it("should throw when trying to set the same state", () => {
+					const store = createStore(testState2, {noStrictEqual: true})
+					expect(() => store.set(store.get())).toThrow()
+				})
+				it("should not trigger event listener when setting to the same state", () => {
+					const fn = vi.fn()
+					const store = createStore(testState2, {noStrictEqual: true})
+					const unsubscribe = store.subscribe(fn)
+					expect(() => store.set(store.get())).toThrow()
+					expect(fn).not.toHaveBeenCalled()
+					store.set((s) => ({...s, mum: {fullname: 'Jane Black', age: s.mum.age}}))
+					expect(fn).toHaveBeenCalledTimes(1)
+					unsubscribe()
+				})
+				it("should not throw when setting to the same state with a different reference", () => {
+					const store = createStore(testState2, {noStrictEqual: true})
+					expect(() => store.set({...store.get()})).not.toThrow()
+				})
+				it("should not throw when setting a scopedStore with same reference (setting only affect root store)", () => {
+					const store = createStore(testState2, {noStrictEqual: true})
+					const scopedStore = store.getScopeStore('mum')
+					expect(() => scopedStore.set(store.get().mum)).not.toThrow()
+				})
+			})
+		})
 	})
 	describe('store.subscribe', () => {
 		it('should allow to be notified when state change', () => {
@@ -101,11 +177,21 @@ describe('createStore', () => {
 			expect(listener).toHaveBeenCalledTimes(2)
 			expect(listener).toHaveBeenCalledWith(state3, state2)
 		})
+		it('should handle a second equalityCheck parameter', () => {
+			const store = createStore(testState.data.person)
+			const listener = vi.fn()
+			const isEqual = (newstate, oldstate) => oldstate.fullname === newstate.fullname
+			store.subscribe(listener, isEqual)
+			store.set((s) => ({...s, age:2}))
+			expect(listener).not.toHaveBeenCalled()
+			store.set((s) => ({...s, fullname:"Jane Doe"}))
+			expect(listener).toHaveBeenCalledTimes(1)
+		})
 		it('should return a method to stop listener', () => {
 			const store = createStore(testState)
 			const listener = vi.fn()
 			const unbind = store.subscribe(listener)
-			store.set({data: {person: null}})
+			store.set({data: {person: {fullname: '', age:0}}})
 			expect(listener).toHaveBeenCalledTimes(1)
 			unbind()
 			store.set({data: {person: {fullname: 'John Snow', age: 32}}})
@@ -174,14 +260,14 @@ describe('createStore', () => {
 			expect(listener).toHaveBeenCalledWith({fullname: 'Jane Doe', age:18}, testState2.mum)
 		})
 		it('should work with path too', () => {
-			const store = createStore(testState)
+			const store = createStore<{data:{person: null|{fullname:string, age:number}, pet?:string}}>(testState)
 			const personStore = store.getScopeStore('data.person')
 			const listener = vi.fn()
 			expect(personStore.get()).toStrictEqual({fullname: 'John Doe', age: 18})
 			personStore.subscribe(listener)
 			store.set((s) => ({...s, data: {...s.data, pet: "bill" }}))
 			expect(listener).not.toHaveBeenCalled()
-			store.set((s) => ({...s, data: {...s.data, person: {...s.data.person, age:25} }}))
+			store.set((s) => ({data: {...s.data, person: {fullname: 'John Doe',age: 25}}}))
 			expect(listener).toHaveBeenCalledTimes(1)
 			expect(listener).toHaveBeenCalledWith({fullname: 'John Doe', age:25}, {fullname: 'John Doe', age:18})
 			expect(personStore.get()).toStrictEqual({fullname: 'John Doe', age:25})
@@ -206,24 +292,35 @@ describe('createStore', () => {
 			expect(listener).toHaveBeenCalled()
 			expect(scopeStore.get()).toStrictEqual({name: 'bill'})
 		})
+		it('should throw an error when trying to set a property on primitive value', () => {
+			const store = createStore<string>("test")
+			const petStore = store.getScopeStore('pet')
+			expect(() => petStore.set("cat")).toThrowError("Can't set propery on primitive values")
+		})
+		it('should set parent to object when trying to set a property on undefined or null value', () => {
+			const store = createStore<{person:{dad:{name:string}, mum:{name:string}}}>(null)
+			const dadNameStore = store.getScopeStore('person.dad.name')
+			dadNameStore.set("daddy")
+			expect(store.get()).toStrictEqual({person:{dad:{name:"daddy"}}})
+		})
 	})
 
 	describe('scoped store that are not in path anymore', () => {
 		it('should be notified that value goes to undefined', () => {
 			const listener = vi.fn()
-			const store = createStore(testState)
-			const personStore = store.getScopeStore('data.person')
+			const store = createStore<{data:{person:{fullname:string, age:number}}}|null>(testState)
+			const personStore = store.getScopeStore('data.person' as ScopePath<Partial<typeof testState>>)
 			personStore.subscribe(listener)
-			store.set({data:null})
+			store.set(null)
 			expect(listener).toHaveBeenCalledWith(undefined, testState.data.person)
 			expect(personStore.get()).toBe(undefined)
 		})
 		it('should get notified with new value if in path again', () => {
 			const listener = vi.fn()
-			const store = createStore(testState)
+			const store = createStore<typeof testState|null>(testState)
 			const personStore = store.getScopeStore('data.person')
 			personStore.subscribe(listener)
-			store.set({data:null})
+			store.set(null)
 			const jane = {fullname: 'Jane Black', age: 18}
 			store.set({data: {person: jane}})
 			expect(listener).toHaveBeenCalledWith(jane, undefined)
@@ -248,7 +345,7 @@ describe('createStore', () => {
 			expect(observer1).toHaveBeenCalled()
 			expect(observer2).toHaveBeenCalled()
 			expect(observer3).toHaveBeenCalled()
-			scopeStore.set({person:null})
+			scopeStore.set({person:null as any})
 			expect(observer1).toHaveBeenCalledTimes(2)
 			expect(observer2).toHaveBeenCalledTimes(2)
 			expect(observer3).toHaveBeenCalledTimes(2)
@@ -269,5 +366,4 @@ describe('createStore', () => {
 			expect(Array.isArray(store.get().parents)).toBe(true)
 		})
 	})
-
 })
