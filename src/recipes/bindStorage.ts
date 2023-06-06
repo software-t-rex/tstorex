@@ -1,8 +1,8 @@
 import { StoreInterface } from "../type"
 
-interface BindStorageOptions<T> {
+export interface BindStorageOptions<T> {
 	// default to sessionStorage
-	storage?: Storage
+	storage?: Pick<Storage, 'getItem' | 'setItem'>
 	// key in storage to store the value in
 	key: string
 	// Try to restore state from storage on init if any. If not state is already set in storage, then set it to the current state.
@@ -20,13 +20,19 @@ interface BindStorageOptions<T> {
  * Returns a function to unbind.
  */
 export const bindStorage = <T>(store: StoreInterface<T>, options:BindStorageOptions<T>) => {
+	if (!options || typeof options !== "object"){
+		throw new Error("bindStorage called with invalid options.")
+	}
 	const {
 		storage = sessionStorage,
 		key,
 		restore = true,
 		serializer = JSON.stringify,
 		deserializer = JSON.parse
-	} = options || {}
+	} = options
+	if (typeof serializer !== "function" || typeof deserializer !== "function" || typeof key !== "string" || key.length < 1 ) {
+		throw new Error("bindStorage called with invalid options.")
+	}
 	if (restore) {
 		const storedValue = storage.getItem(key)
 		if (storedValue === null) {
