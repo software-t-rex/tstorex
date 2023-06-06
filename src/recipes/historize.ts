@@ -1,7 +1,11 @@
 import { StoreInterface } from "../type"
 
 export interface HistorizeOptions<T> {
+	// How many history steps should be kept (default: 100), current state count for 1 step.
+	// It will discard oldest history steps if the limit is reached.
 	maxSize?: number,
+	// Initial history state (default: [store.get()]).
+	// Allow to initialize with a given history stack.
 	initHistory?: T[]
 }
 
@@ -36,16 +40,20 @@ export type StoreHistoryAPI<TypeState = any> = {
 export const historize = <TypeState>(store:StoreInterface<TypeState>, opts:HistorizeOptions<TypeState> = {maxSize:100}) => {
 	const { get, set, subscribe } = store
 	const { maxSize=100, initHistory=[] } = opts
-	// push initial state to history
-	if (initHistory.length === 0) {
-		let initialState = get()
-		if (Array.isArray(initialState)) {
-			initialState = [...initialState] as TypeState
-		} else if (initialState && typeof initialState === 'object') {
-			initialState = {...initialState}
-		}
-		initHistory.push(initialState)
+	if (typeof maxSize !== 'number' || maxSize < 1) {
+		throw new Error("historize: maxSize must be a number greater than 0")
+	} else if (!Array.isArray(initHistory)) {
+		throw new Error("historize: initHistory must be an array")
 	}
+	// push initial state to history
+	let initialState = get()
+	if (Array.isArray(initialState)) {
+		initialState = [...initialState] as TypeState
+	} else if (initialState && typeof initialState === 'object') {
+		initialState = {...initialState}
+	}
+	initHistory.push(initialState)
+
 	// init history
 	const history: TypeState[] = [...initHistory.slice(-maxSize)]
 	let historyIndex = history.length - 1
@@ -63,9 +71,6 @@ export const historize = <TypeState>(store:StoreInterface<TypeState>, opts:Histo
 	})
 
 	const go = (relativePosition:number) => {
-		if (!history) {
-			return
-		}
 		const nextHistoryIndex = Math.max(0, Math.min(history.length -1, historyIndex + relativePosition))
 		if (nextHistoryIndex === historyIndex) {
 			return
