@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  * // must use js-dom happy-dom has only getter for valueAs* properties
  */
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { createStore } from "../store"
 import { BindAbleInputElement, bindInput } from "./bindInput"
 interface Person {
@@ -180,6 +180,39 @@ describe("bindInput", () => {
 				expect(input.value).toBe("JANE")
 				unbind()
 			})
+		})
+		it("should accept a string eventName as options", () => {
+			const { store, input, changeValue } = setup('<input type="text" />', testData)
+			const unbind = bindInput(store.getScopeStore("firstName"), input, 'blur')
+			expect(input.value).toBe("John")
+			changeValue("Jane")
+			expect(store.get().firstName).toBe("John")
+			input.dispatchEvent(new Event('blur'))
+			expect(store.get().firstName).toBe("Jane")
+			unbind()
+		})
+		it("should accept an array of string eventNames as options", () => {
+			const { store, input, changeValue } = setup('<input type="text" />', testData)
+			const unbind = bindInput(store.getScopeStore("firstName"), input, ['blur', 'keypress'])
+			expect(input.value).toBe("John")
+			changeValue("Jane")
+			expect(store.get().firstName).toBe("John")
+			input.dispatchEvent(new Event('blur'))
+			expect(store.get().firstName).toBe("Jane")
+			changeValue("Jake")
+			expect(store.get().firstName).toBe("Jane")
+			input.dispatchEvent(new Event('change'))
+			expect(store.get().firstName).toBe("Jane")
+			input.dispatchEvent(new Event('keypress'))
+			expect(store.get().firstName).toBe("Jake")
+			unbind()
+		})
+		it("should log an error if options is not a string, string[], or object", () => {
+			const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+			const { store, input } = setup('<input type="text" />', testData)
+			const unbind = bindInput(store.getScopeStore("firstName"), input, 1 as any)
+			expect(spy).toHaveBeenLastCalledWith('bindInput received bad options format default to {events: ["change"]}')
+			spy.mockRestore()
 		})
 	})
 })

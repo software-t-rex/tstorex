@@ -104,4 +104,20 @@ describe("bindAttribute", () => {
 		expect(store.get()).toBe("John")
 		expect(div.getAttribute("data-name")).toBe("John")
 	})
+
+	it("should remove attribute if store value is null or undefined", async () => {
+		const store = createStore<{name:string, pet?: string}>({name: "John"})
+		const element = document.createElement("div")
+		const unbind = bindAttribute(store.getScopeStore("pet"), element, "data-test")
+		expect(element.dataset.test).toBeUndefined()
+		store.set((s) => ({...s,  pet: "dog" }))
+		expect(element.dataset.test).toBe("dog")
+		store.set((s) => {
+			const {pet, ...rest} = s
+			return rest
+		})
+		expect(element.dataset.test).toBeUndefined()
+		expect(element.getAttribute('data-test')).toBeNull()
+		unbind()
+	})
 })

@@ -44,6 +44,25 @@ describe("historize", () => {
 		expect(history.forwardLength).toEqual(0)
 		history.destroy()
 	})
+	it("should work for Array state", () => {
+		const store = createStore([1, 2, 3])
+		const history = historize(store)
+		expect(history.state).toEqual([1, 2, 3])
+		expect(history.length).toEqual(1)
+		expect(history.backLength).toEqual(0)
+		expect(history.forwardLength).toEqual(0)
+		store.set([4, 5, 6])
+		expect(history.state).toEqual([4, 5, 6])
+		expect(history.length).toEqual(2)
+		expect(history.backLength).toEqual(1)
+		expect(history.forwardLength).toEqual(0)
+		history.back()
+		expect(history.state).toEqual([1, 2, 3])
+		expect(history.length).toEqual(2)
+		expect(history.backLength).toEqual(0)
+		expect(history.forwardLength).toEqual(1)
+		history.destroy()
+	})
 	describe('StoreHistoryAPI', () => {
 		describe('state', () => {
 			it("should return current state", () => {
@@ -212,6 +231,51 @@ describe("historize", () => {
 				for(let i=0; i<methods.length; i++) {
 					expect(history[methods[i]]).toThrow(/.*destroyed StoreHistoryAPI.*/)
 				}
+			})
+		})
+	})
+	describe('options', () => {
+		describe("maxSize", () => {
+			it("should limit the number of steps in history", () => {
+				const store = createStore(john)
+				const history = historize(store, { maxSize: 2 })
+				history.pushState(jane)
+				expect(history.length).toEqual(2)
+				history.pushState(jack)
+				expect(history.length).toEqual(2)
+				history.back()
+				expect(history.backLength).toEqual(0)
+				expect(history.state).toEqual(jane)
+				history.back()
+				expect(history.state).toEqual(jane)
+			})
+			it("should throw if maxSize is not a number or is less than 1", () => {
+				const store = createStore(john)
+				//@ts-ignore
+				expect(() => historize(store, { maxSize: 'foo' })).toThrow(/.*maxSize must be a number greater than 0.*/)
+				expect(() => historize(store, { maxSize: 0 })).toThrow(/.*maxSize must be a number greater than 0.*/)
+			})
+		})
+		describe("initHistory", () => {
+			it("should allow to initialize history with given back states", () => {
+				const store = createStore(john)
+				const history = historize(store, { initHistory: [jane, jack] })
+				expect(store.get()).toEqual(john)
+				expect(history.state).toEqual(john)
+				expect(history.length).toEqual(3)
+				history.back()
+				expect(store.get()).toEqual(jack)
+				expect(history.state).toEqual(jack)
+				expect(history.backLength).toEqual(1)
+				history.back()
+				expect(store.get()).toEqual(jane)
+				expect(history.state).toEqual(jane)
+				expect(history.backLength).toEqual(0)
+			})
+			it("should throw if initHistory is not an array", () => {
+				const store = createStore(john)
+				//@ts-ignore
+				expect(() => historize(store, { initHistory: 'foo' })).toThrow(/.*initHistory must be an array.*/)
 			})
 		})
 	})
