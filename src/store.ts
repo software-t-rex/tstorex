@@ -126,6 +126,8 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 	if (init !== null) {
 		if (typeof init === 'function') {
 			state = (init as StoreInitializer<TypeState>)(get, set)
+		} else if (Array.isArray(init)) {
+			state = [...init] as TypeState
 		} else if (typeof init === 'object') {
 			state = { ...init }
 		} else {
