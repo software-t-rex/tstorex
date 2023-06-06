@@ -31,6 +31,11 @@ export interface StoreOptions {
 	 * This won't affect the behavior of ScopedStore (which will always trigger change listeners).
 	 */
 	noStrictEqual?: boolean
+	/**
+	 * If you initialize a store with a state that is not a plain object, array or primitive value,
+	 * TstoREx will complain about it. You can set this option to true to disable this warning.
+	 */
+	noWarn?: boolean
 }
 export type NextState<TypeState> = TypeState | ((state: TypeState) => TypeState)
 export type StoreInitializer<TypeState = any> = (get: () => TypeState, set: (nextState: NextState<TypeState>) => void) => TypeState

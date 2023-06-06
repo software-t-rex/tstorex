@@ -78,6 +78,11 @@ const isPrimitive = (value: any) => value === null || primitives.includes(typeof
  *   The store can't be re-used and any reference in your code to the store or any of its child should be dropped.
  * - **isDestroyed()**: will return true if the store is destroyed
  * - **extends([StoreExtender, ...])**: can be used to extend a store
+ *
+ * ⚠ Beware that store are intended to store Generic data objects, arrays or primitives values.
+ * Using store to manipulate Date, UInt*Array, Map, Set, or any other non generic object at the top level may result
+ * in unexpected behavior and is not in the scope of this library.
+ * You can however use store to manipulate state that contain such objects as properties.
  */
 export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState> | TypeState> = null, opts?:StoreOptions): Store<TypeState> & {
 	/**
@@ -92,7 +97,7 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 } => {
 	let destroyed = false
 	let state: Nullable<TypeState> = null
-	const {noFreeze = false, noStrictEqual = false} = opts || {}
+	const {noFreeze = false, noStrictEqual = false, noWarn = false} = opts || {}
 	const emitter = createChangeEmitter()
 	const throwIfDestroyed = (msg: string) => {
 		if (destroyed) {
@@ -129,6 +134,9 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 		} else if (Array.isArray(init)) {
 			state = [...init] as TypeState
 		} else if (typeof init === 'object') {
+			if (!noWarn && Object.prototype.toString.call(init) !== '[object Object]') {
+				console.warn("TstoREx is intended to be used with plain object, array or primitives, other types may not work as expected.")
+			}
 			state = { ...init }
 		} else {
 			state = init

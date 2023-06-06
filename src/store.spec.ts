@@ -1,6 +1,6 @@
 import { vi, describe, it, expect } from "vitest"
 import { createStore} from "./store"
-import { ScopePath, StoreInitializer} from "./type"
+import { ScopePath, Store, StoreInitializer} from "./type"
 
 const testState = {data: {person: {fullname: 'John Doe', age: 18}}}
 const testStateString = '{"data":{"person":{"fullname":"John Doe","age":18}}}'
@@ -8,6 +8,7 @@ const testState2 = {
 	mum: {fullname: 'Jane Doe', age: 43},
 	dad: {fullname: 'John Doe', age: 41},
 }
+const createWarnMsg = "TstoREx is intended to be used with plain object, array or primitives, other types may not work as expected."
 
 describe('createStore', () => {
 	it('should correctly init store state from value', () => {
@@ -87,38 +88,54 @@ describe('createStore', () => {
 		subStore.set({...dad, fullname: 'John Black'})
 		expect(Object.isFrozen(store.get().dad)).toBe(true)
 	})
+	it('should work with primitives and array type of state', () => {
+		let store:Store<any> = createStore('foo')
+		expect(store.get()).toBe('foo')
+		store = createStore(1.2)
+		expect(store.get()).toBe(1.2)
+		store = createStore(true)
+		expect(store.get()).toBe(true)
+		store = createStore([1,2,3])
+		expect(store.get()).toEqual([1,2,3])
+	})
 	describe('options', () => {
 		describe('noFreeze', () => {
-			it('should not freeze state when noFreeze is true', () => {
-				const initState = {dad:{...testState2.dad}, mum:{...testState2.mum}}
-				const store = createStore(initState, {noFreeze: true})
-				const state = store.get()
-				expect(Object.isFrozen(state)).toBe(false)
-				expect(() => {state.mum = {fullname:"maman", age:40}}).not.toThrow()
-				store.set({...initState, mum: {...initState.mum, age:0}})
-				expect(() => {state.mum = {fullname:"mummy", age:60}}).not.toThrow()
-				const subStore = store.getScopeStore('dad')
-				const dad = subStore.get()
-				expect(() => dad.fullname = 'John Snow').not.toThrow()
-				subStore.set({...dad, fullname: 'John Black'})
-				expect(Object.isFrozen(store.get().dad)).toBe(false)
-			})
-			it("should freeze state when noFreeze is false", () => {
-				const initState = {dad:{...testState2.dad}, mum:{...testState2.mum}}
-				const store = createStore(initState, {noFreeze: false})
-				const state = store.get()
-				expect(Object.isFrozen(state)).toBe(true)
-				expect(() => {state.mum = {fullname:"maman", age:40}}).toThrow()
-				store.set({...initState, mum: {...initState.mum, age:0}})
-				expect(() => {state.mum = {fullname:"mummy", age:60}}).toThrow()
-				const subStore = store.getScopeStore('dad')
-				const dad = subStore.get()
-				expect(() => dad.fullname = 'John Snow').toThrow()
-				expect(Object.isFrozen(store.get().dad)).toBe(true)
+			describe('when true', () => {
+				describe('when false (default)', () => {
+					it("should freeze state", () => {
+						const initState = {dad:{...testState2.dad}, mum:{...testState2.mum}}
+						const store = createStore(initState, {noFreeze: false})
+						const state = store.get()
+						expect(Object.isFrozen(state)).toBe(true)
+						expect(() => {state.mum = {fullname:"maman", age:40}}).toThrow()
+						store.set({...initState, mum: {...initState.mum, age:0}})
+						expect(() => {state.mum = {fullname:"mummy", age:60}}).toThrow()
+						const subStore = store.getScopeStore('dad')
+						const dad = subStore.get()
+						expect(() => dad.fullname = 'John Snow').toThrow()
+						expect(Object.isFrozen(store.get().dad)).toBe(true)
+					})
+				})
+				describe('when true', () => {
+					it('should not freeze state', () => {
+						const initState = {dad:{...testState2.dad}, mum:{...testState2.mum}}
+						const store = createStore(initState, {noFreeze: true})
+						const state = store.get()
+						expect(Object.isFrozen(state)).toBe(false)
+						expect(() => {state.mum = {fullname:"maman", age:40}}).not.toThrow()
+						store.set({...initState, mum: {...initState.mum, age:0}})
+						expect(() => {state.mum = {fullname:"mummy", age:60}}).not.toThrow()
+						const subStore = store.getScopeStore('dad')
+						const dad = subStore.get()
+						expect(() => dad.fullname = 'John Snow').not.toThrow()
+						subStore.set({...dad, fullname: 'John Black'})
+						expect(Object.isFrozen(store.get().dad)).toBe(false)
+					})
+				})
 			})
 		})
 		describe('noSrictEqual', () => {
-			describe("when false", () => {
+			describe("when false (default)", () => {
 				it("should not throw when trying to set the same state", () => {
 					const store = createStore(testState2, {noStrictEqual: false})
 					expect(() => store.set(testState2)).not.toThrow()
@@ -159,6 +176,29 @@ describe('createStore', () => {
 					const store = createStore(testState2, {noStrictEqual: true})
 					const scopedStore = store.getScopeStore('mum')
 					expect(() => scopedStore.set(store.get().mum)).not.toThrow()
+				})
+			})
+		})
+		describe('noWarn', () => {
+			describe("when false (default)", () => {
+				it("should warn when trying to set a value that is not a plain object", () => {
+					const spy = vi.spyOn(global.console, 'warn').mockImplementation(() => {})
+					;[new Date, new Uint8Array, new Map, new Set, new WeakMap, new WeakSet].forEach((value, k) => {
+						createStore(value, {noWarn: false})
+						expect(spy).toHaveBeenCalledTimes(k+1)
+						expect(spy).toHaveBeenLastCalledWith(createWarnMsg)
+					})
+					spy.mockRestore()
+				})
+			})
+			describe("when true", () => {
+				it("should not warn when trying to set a value that is not a plain object", () => {
+					const spy = vi.spyOn(global.console, 'warn').mockImplementation(() => {})
+					;[new Date, new Uint8Array, new Map, new Set, new WeakMap, new WeakSet].forEach((value, k) => {
+						createStore(value, {noWarn: true})
+						expect(spy).toHaveBeenCalledTimes(0)
+					})
+					spy.mockRestore()
 				})
 			})
 		})
