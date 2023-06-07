@@ -1,3 +1,9 @@
+/*
+Copyright © 2023 Jonathan Gotti <jgotti at jgotti dot org>
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: MIT
+SPDX-FileCopyrightText: 2023 Jonathan Gotti <jgotti@jgotti.org>
+*/
 import { describe, it, expect, vi } from "vitest"
 import { createStore } from "../store"
 import { produce, removeProp, setProp, mutate } from "./mutate"

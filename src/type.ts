@@ -1,3 +1,9 @@
+/*
+Copyright © 2023 Jonathan Gotti <jgotti at jgotti dot org>
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: MIT
+SPDX-FileCopyrightText: 2023 Jonathan Gotti <jgotti@jgotti.org>
+*/
 export type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 export type Nullable<TypeState> = TypeState | null | undefined
 export type PathIdentifier = string | number

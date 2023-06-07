@@ -1,3 +1,9 @@
+/*
+Copyright © 2023 Jonathan Gotti <jgotti at jgotti dot org>
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: MIT
+SPDX-FileCopyrightText: 2023 Jonathan Gotti <jgotti@jgotti.org>
+*/
 /**
  * @vitest-environment happy-dom
  * // don't use jsdom as mutation observer are not triggered properly (delayed and with latest values)

@@ -1,3 +1,9 @@
+/*
+Copyright © 2023 Jonathan Gotti <jgotti at jgotti dot org>
+SPDX-FileType: SOURCE
+SPDX-License-Identifier: MIT
+SPDX-FileCopyrightText: 2023 Jonathan Gotti <jgotti@jgotti.org>
+*/
 import type { StoreInterface } from "../type";
 type RequireAtLeastOne<T> = { [K in keyof T]:
   { [L in K]: T[L] } &
