@@ -1,12 +1,12 @@
 # TstorEX recipes
 
-## official recipes
+## Official recipes
 You will find here a bunch of provided recipes that you may use to assist you with your store related experience.
 
 Apart removeProp and setProp who will require the _getScopeStore_ to be implemented,
 **these recipes can be used with other store libraries** provided they implement similar interface (_get_, _set_, _subscribe_). Feel free to do so, they are all licensed under the MIT license which is a permissive open source license.
 
-For more details on how to use them don't hesitates to take a look at the specs files or the source code which should contains example in comments. Your IDE code completion should help too.
+For more details on how to use them don't hesitate to take a look at the specs files or the source code which should contains example in comments. Your IDE code completion should help too.
 
 ### basics
 #### useStore:
@@ -38,7 +38,7 @@ const myStore = createStore({userId:1, username: "malko"})
 const unbind = bindAttribute(myStore.getScopeStore('userId'), myDivElement, 'data-userid')
 myStore.set((s) => {...s, userId:2})
 console.log(myDivElement.getAttribute('data-userid')) // 2
-myDivElement.getAttribute('data-userid', 3)
+myDivElement.setAttribute('data-userid', 3)
 console.log(myStore.get().userId) // 3
 unbind() // stop sync
 ```
@@ -83,17 +83,22 @@ console.log(history.forwardLength) // 1
 historyApi.forward() // or alias historyApi.redo()
 console.log(historyApi.state) // 'step 1'
 ```
+You can save history for future restoration with ```const savePoint = historyApi.history```. To start with a saved history just pass it in the options of historize call like this: ```const historyApi = historize(myStore, {initHistory: savePoint, maxSize:100})```
+
 
 ### mutate:
-This is inspired from immerjs and provide also provide a _produce_ method.
+This is inspired from immerjs and also provide a _produce_ method.
 It allow you to use immerjs style recipes to modify a draft state directly.
 Beware that it will only work for simple dataset, and is clearly not intended to
-be used for with more complex types. But it really come in handy in most cases.
+be used with more complex types. But it really comes in handy in most cases.
 For more complex usage you should probably fallback to store.set method instead.
 ```ts
 const store = createStore({
 	name: "John",
-	age: 42
+	age: 42,
+	children: [
+		{name:"Jack", age:18}
+	]
 })
 mutate(store, (s) => {
 	// change a prop directly
@@ -102,12 +107,14 @@ mutate(store, (s) => {
 	s.pet = "cat"
 	// even remove the prop
 	delete s.age
+	// work with nested props too
+	s.children[0].age = 11
 })
-console.log(store.get()) // { name: 'Jane', pet: 'cat' }
+console.log(store.get()) // { name: 'Jane', pet: 'cat', children: [{ name: "Jack", age: 11 }] }
 
 ```
 
-It comes with two simple recipes (not immerjs recipe) removeProp and setProp that work like this:
+It comes with two simple recipes (not immerjs style recipe) removeProp and setProp that work like this:
 ```ts
 // both of them can handle nested properties
 removeProp(myStore, "age")

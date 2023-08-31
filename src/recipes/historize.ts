@@ -24,6 +24,8 @@ export type StoreHistoryAPI<TypeState = any> = {
 	readonly backLength: number
 	/** return the current store state */
 	readonly state: TypeState
+	/** return a copy of the current history typically used to save history for future restoration */
+	readonly history: TypeState[]
 	/** set the store state to given relative position in the history (go(-1) is the same as calling back()) */
 	go: (relativePosition: number) => void
 	/** set the store state to the previous state (equivalent to calling go(-1)) */
@@ -119,6 +121,7 @@ export const historize = <TypeState>(store:StoreInterface<TypeState>, opts:Histo
 		get forwardLength() { return history.length > 0? history.length - (historyIndex+1) : 0 },
 		get backLength() { return historyIndex },
 		get state() { return get() },
+		get history() { return history.slice() },
 		destroy: () => destroyApi(api)
 	}
 
