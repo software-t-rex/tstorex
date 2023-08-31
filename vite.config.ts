@@ -1,14 +1,22 @@
-import { defineConfig } from 'vite'
+import { defineConfig as defineViteConfig } from 'vite'
+import { defineConfig as defineVitestConfig, mergeConfig } from 'vitest/config'
+import dts from 'vite-plugin-dts'
 
-export default defineConfig({
+const viteConf = defineViteConfig({
 	build: {
 		lib: {
-			entry: 'src/index.ts',
-			name: 'tstorex',
-			formats: ["cjs", "es", "umd"]
+			entry: {
+				index: 'src/index.ts',
+				recipes: 'src/recipes/index.ts',
+			},
+			formats: ["cjs", "es"]
 		},
 		sourcemap: true,
 	},
+	plugins: [dts({ rollupTypes: true })],
+})
+
+const vitestConf = defineVitestConfig({
 	test: {
 		coverage:{
 			enabled: true,
@@ -19,3 +27,5 @@ export default defineConfig({
 		}
 	}
 })
+
+export default mergeConfig(viteConf, vitestConf)

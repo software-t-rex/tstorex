@@ -3,27 +3,25 @@
 	"version": "0.0.1",
 	"description": "An agnostic, dependence free, state management library",
 	"type": "module",
-	"files": [
-		"dist"
-	],
-	"module": "dist/tstorex.js",
-	"main": "dist/tstorex.cjs",
+	"module": "index.js",
+	"main": "index.cjs",
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"types": "./dist/types/index.d.ts",
-			"import": "./dist/tstorex.js",
-			"require": "./dist/tstorex.cjs"
+			"types": "./index.d.ts",
+			"import": "./index.js",
+			"require": "./index.cjs"
 		},
 		"./recipes": {
-			"types": "./dist/types/recipes/index.d.ts",
-			"import": "./dist/recipes.js",
-			"require": "./dist/recipes.cjs"
+			"types": "./recipes.d.ts",
+			"import": "./recipes.js",
+			"require": "./recipes.cjs"
 		}
 	},
 	"scripts": {
 		"test": "vitest --watch=false",
-		"build": "rm -rf dist && tsc && vite build && tsc -p tsconfig.dts.json"
+		"build": "rm -rf dist && tsc && vite build && cp package.json README.md LICENSE dist/",
+		"pre-publish": "pnpm run test && pnpm run build && cd dist && pnpm pack"
 	},
 	"keywords": [
 		"state",
