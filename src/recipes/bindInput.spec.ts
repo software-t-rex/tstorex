@@ -4,10 +4,8 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: MIT
 SPDX-FileCopyrightText: 2023 Jonathan Gotti <jgotti@jgotti.org>
 */
-
 /**
- * @vitest-environment jsdom
- * // must use js-dom happy-dom has only getter for valueAs* properties
+ * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi } from "vitest"
 import { createStore } from "../store"
