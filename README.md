@@ -19,12 +19,12 @@ The easiest way to try and get started with TstoREx is simply by using a good ol
 <!-- import as an esm module  -->
 <script type="module">
     // choose your prefered cdn 
-	// jsdlivr: https://esm.run/@t-rex.software/tstorex/index.js
+	// jsdlivr: https://cdn.jsdelivr.net/npm/@t-rex.software/tstorex/index.js
 	// or 
-	// unpkg: https://unpkg.com@t-rex.software/tstorex/index.js
-    import {createStore} from "https://unpkg.com@t-rex.software/tstorex/index.js"
+	// unpkg: https://unpkg.com/@t-rex.software/tstorex/index.js
+    import {createStore} from "https://unpkg.com/@t-rex.software/tstorex/index.js"
 	// you can also load pre-made official recipes this way
-	import { bindInput } from "https://unpkg.com@t-rex.software/tstorex/recipes.js"
+	import { bindInput } from "https://unpkg.com/@t-rex.software/tstorex/recipes.js"
 
 </script>
 ```
