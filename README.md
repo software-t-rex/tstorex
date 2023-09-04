@@ -1,34 +1,51 @@
 # TstoREx
 
+An agnostic, small, dependence free, state management library
+
 This is a really simple store implementation you can use with vanilla-js or with any frontend framework like react.
 It is written in typescript and should be type safe, you will have full code completion when working with it if your IDE supports it.
 
 ## Features
 * Immutability of states (can be turned off if you really want it).
 * Observability, so you can listen to any change in the store.
-* Scoping
-    * Access to a subset of the store using dot notation (store.getScopeStore("my.nested.property"))
-    * Add listeners for changes that occur on that scope only
-    * Get/set directly to that scope without remembering the full path of the scope
-* Extensible, we provide some official recipes to extend the usage of the store, and you can write your own
+* Scoping:
+    * Access to a subset of the store using dot notation (store.getScopeStore("my.nested.property")).
+    * Add listeners for changes that occur on that scope only.
+    * Get/set directly to that scope without remembering the full path of the scope.
+* Extensible, we provide some official recipes to extend the usage of the store, and you can write your own.
+* Small, the store itself is about 1kB gziped, while official recipes is less than 2.5kB.
 
 ## Install
-The easiest way to try and get started with TstoREx is simply by using a good old script tag within your html page, using CDN like jsdlivr or unpkg.
+
+### From CDN
+The easiest way to try and get started with TstoREx is simply by using a good old script tag within your html page, using CDN.
+
+with [jsdelivr](https://www.jsdelivr.com/): 
+
+	- main file: https://cdn.jsdelivr.net/npm/@t-rex.software/tstorex[@version]/index.js
+	- official recipes: https://cdn.jsdelivr.net/npm/@t-rex.software/tstorex[@version]/recipes.js
+	- [@version] can be omit, @latest or a fixed version ie: v0.0.1
+
+with [unpkg](https://unpkg.com/):
+
+	- https://unpkg.com/@t-rex.software/tstorex[@version]/index.js
+	- https://unpkg.com/@t-rex.software/tstorex[@version]/recipes.js
+	- [@version] should be replaced with a fixed version ie: 0.0.1
+
+In both case you can also download d.ts files by replacing the file extension.
+
 
 ```html
 <!-- import as an esm module  -->
 <script type="module">
-    // choose your prefered cdn 
-	// jsdlivr: https://cdn.jsdelivr.net/npm/@t-rex.software/tstorex/index.js
-	// or 
-	// unpkg: https://unpkg.com/@t-rex.software/tstorex/index.js
-    import {createStore} from "https://unpkg.com/@t-rex.software/tstorex/index.js"
+ 	import {createStore} from "https://unpkg.com/@t-rex.software/tstorex/index.js"
 	// you can also load pre-made official recipes this way
 	import { bindInput } from "https://unpkg.com/@t-rex.software/tstorex/recipes.js"
-
+	const store = createStore()
 </script>
 ```
 
+### From npm
 You can either install it from your favorite package manager, this will allow tree checking for your build process.
 ```sh
 # using npm
@@ -43,7 +60,7 @@ yarn add @t-rex.software/tstorex
 
 To use it simply create a store like this: ```const myStore = createStore({fullname: 'John Doe', age: 18})`}```.
 
-Or use an ScopeInitializer function: 
+Or use a ScopeInitializer function: 
 ```ts
 const myStoreInit = (get, set) => {
 	return {
@@ -92,7 +109,7 @@ You can check a store destroyed state like this: ```myStore.isDestroyed()```
 
 ### Working with a scoped subset of a store
 One nice feature of TstoREx is the ability to work seamlessly on a subset of a store.
-Working on a subset of a store will ease performance optimisation in react by avoiding too many rerenders.
+Working on a subset of a store will ease performance optimisation in react by avoiding too many re-renders.
 This is possible due to the fact that scoped store will only listen for change inside their scope not the whole store.
 ```ts
 const myStore = createStore({mum: {name: 'Jane', age: 24}, dad: {name: 'John', age: 25}})
