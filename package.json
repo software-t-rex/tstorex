@@ -1,27 +1,33 @@
 {
 	"name": "@t-rex.software/tstorex",
 	"version": "0.0.1",
-	"description": "An agnostic, dependence free, state management library",
+	"description": "An agnostic, small, dependence free, state management library",
 	"type": "module",
-	"module": "index.js",
-	"main": "index.cjs",
-	"exports": {
-		"./package.json": "./package.json",
-		".": {
-			"types": "./index.d.ts",
-			"import": "./index.js",
-			"require": "./index.cjs"
-		},
-		"./recipes": {
-			"types": "./recipes.d.ts",
-			"import": "./recipes.js",
-			"require": "./recipes.cjs"
-		}
-	},
+	"main": "index.ts",
 	"scripts": {
 		"test": "vitest --watch=false",
-		"build": "rm -rf dist && tsc && vite build && cp package.json README.md LICENSE dist/",
-		"pre-publish": "pnpm run test && pnpm run build && cd dist && pnpm pack"
+		"build": "rm -rf dist && tsc && vite build",
+		"postBuild": "./scripts/postBuild.js",
+		"pre-publish": "pnpm run test && pnpm run build && pnpm run postBuild"
+	},
+	"devDependencies": {
+		"@types/node": "^18.16.0",
+		"@vitest/coverage-v8": "^0.34.3",
+		"happy-dom": "^10.11.2",
+		"typescript": "^5.0.4",
+		"vite": "^4.4.9",
+		"vite-plugin-dts": "^3.5.3",
+		"vitest": "^0.34.3"
+	},
+	"author": "Jonathan Gotti <jgotti at jgotti dot org>",
+	"license": "MIT",
+	"homepage": "https://github.com/software-t-rex/tstorex",
+	"bugs": {
+		"url": "https://github.com/software-t-rex/tstorex/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/software-t-rex/tstorex.git"
 	},
 	"keywords": [
 		"state",
@@ -36,15 +42,5 @@
 		"state store library",
 		"reactive state management"
 	],
-	"devDependencies": {
-		"@types/node": "^18.16.0",
-		"@vitest/coverage-v8": "^0.34.3",
-		"happy-dom": "^10.11.2",
-		"typescript": "^5.0.4",
-		"vite": "^4.4.9",
-		"vite-plugin-dts": "^3.5.3",
-		"vitest": "^0.34.3"
-	},
-	"author": "Jonathan Gotti <jgotti at jgotti dot org>",
-	"license": "MIT"
+	"funding": "https://github.com/sponsors/malko"
 }
