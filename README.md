@@ -73,6 +73,31 @@ const myStoreInit = (get, set) => {
 const myStore = createStore(myStoreInit)
 ```
 
+### Options
+
+The ```createStore``` function can take a second options parameter. They are there to use TstoREx in specific situations, which most users should not encounter in normal use. But they can come in handy rare occasions so here they are:
+
+#### noFreeze
+By default state in store are made immutable (deeply frozen), unless this options is set to true.
+You should not need to set this option to true, unless you have a very specific use case.
+
+It can be useful to use this options if you're dealing with big objects and are looking to boost performance by not freezing objects. In such case, our recommendation is to keep it false at least in development mode, to ensure your usage of the store don't break immutability. 
+
+#### noStrictEqual
+Setting a store to a strictly equal state (===) won't do anything and will just be ignored, so it won't trigger any change listener.
+Passing noStrictEqual option to true will throw an error if you try to set to the current state to itself, unless it's a primitive value.
+
+This won't affect the behavior of ScopedStore (which will always trigger change listeners).
+
+This can be helpful in development if you want to be sure you don't call set when it's useless.
+
+#### noWarn
+If you initialize a store with a state that is not a plain object, array or primitive value,
+TstoREx will complain about it. You can set this option to true to disable this warning.
+
+The only purpose of this is to allow you to deal with non plain objects, like class instances.
+This is not the intended use for TstoREx and you need to be really careful about the way you use the store and the object stored in it. This option allow you to bypass the check and assume that you know what you are doing.
+
 ## Using the store
 
 ### Get a snapshot of the store state

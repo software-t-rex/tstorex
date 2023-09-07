@@ -26,14 +26,13 @@ export type PathValue<T extends GenericObject, K extends PathProp<T, Depth> | st
 
 export interface StoreOptions {
 	/**
-	 * By default state in store are made immutable (deeply frozen), unless this options is set to false.
-	 * You should not need to set this option to false, unless you have a very specific use case.
+	 * By default state in store are made immutable (deeply frozen), unless this options is set to true.
+	 * You should not need to set this option to true, unless you have a very specific use case.
 	 */
 	noFreeze?: boolean
 	/**
-	 * By default setting store state to strictly equal same state (=== for anything that it's not a primitive value)
-	 * won't do anything, and won't trigger any change listener.
-	 * Setting this option to true will throw an error if you try to set to the current state to itself, unless it's a primitive value.
+	 * Setting a store to a strictly equal state (===) won't do anything and will just be ignored, so it won't trigger any change listener.
+	 * Passing noStrictEqual option to true will throw an error if you try to set to the current state to itself, unless it's a primitive value.
 	 * This won't affect the behavior of ScopedStore (which will always trigger change listeners).
 	 */
 	noStrictEqual?: boolean
