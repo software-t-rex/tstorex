@@ -42,6 +42,12 @@ export interface StoreOptions {
 	 */
 	noWarn?: boolean
 }
+export interface SubscribeOptions<TypeState> {
+	/** allow to set custom algorythm for equality check */
+	equalityCheck?: undefined | ((newState: TypeState, oldState: TypeState) => boolean)
+	/** allow to trigger the listener at subscription time, oldValue will equal newValue in this case */
+	initCall?: boolean
+}
 export type NextState<TypeState> = TypeState | ((state: TypeState) => TypeState)
 export type StoreInitializer<TypeState = any> = (get: () => TypeState, set: (nextState: NextState<TypeState>) => void) => TypeState
 export type ChangeListener<TypeState> = (newState: TypeState, oldState?: TypeState) => void
@@ -59,7 +65,7 @@ export interface StoreInterface<TypeState=any> {
 	 * Bind a listener which will be called on any state change within the store.
 	 * A second optional parameter equalityCheck can be passed. It should return wether the two states are considered the same or not
 	 */
-	subscribe: (listener: ChangeListener<TypeState>, equalityCheck?: (newState: TypeState, oldState: TypeState) => boolean) => () => void
+	subscribe: (listener: ChangeListener<TypeState>, options?: SubscribeOptions<TypeState>) => () => void
 	/** Unbind all listener bound to the store and reset state value to null. */
 	isDestroyed: () => boolean
 }

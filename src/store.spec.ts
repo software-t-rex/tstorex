@@ -14,7 +14,7 @@ const testState2 = {
 	mum: {fullname: 'Jane Doe', age: 43},
 	dad: {fullname: 'John Doe', age: 41},
 }
-const createWarnMsg = "TstoREx is intended to be used with plain object, array or primitives, other types may not work as expected."
+const createWarnMsg = "TstoREx is intended to be used with plain object, array or primitives, other types may not work as expected.\nIf you know what you are doing you can disable this warning using the noWarn option."
 
 describe('createStore', () => {
 	it('should correctly init store state from value', () => {
@@ -224,16 +224,6 @@ describe('createStore', () => {
 			expect(listener).toHaveBeenCalledTimes(2)
 			expect(listener).toHaveBeenCalledWith(state3, state2)
 		})
-		it('should handle a second equalityCheck parameter', () => {
-			const store = createStore(testState.data.person)
-			const listener = vi.fn()
-			const isEqual = (newstate, oldstate) => oldstate.fullname === newstate.fullname
-			store.subscribe(listener, isEqual)
-			store.set((s) => ({...s, age:2}))
-			expect(listener).not.toHaveBeenCalled()
-			store.set((s) => ({...s, fullname:"Jane Doe"}))
-			expect(listener).toHaveBeenCalledTimes(1)
-		})
 		it('should not trigger events when setting to the same state', () => {
 			const store = createStore(testState2, {noFreeze: true})
 			const listener = vi.fn()
@@ -252,6 +242,39 @@ describe('createStore', () => {
 			expect(listener).toHaveBeenCalledTimes(1)
 			store.destroy()
 		})
+		describe('can take an options parameter', () => {
+			it('equalityCheck: should allow to set equalityCheck algorythm', () => {
+				const store = createStore(testState.data.person)
+				const listener = vi.fn()
+				const equalityCheck = (newstate, oldstate) => oldstate.fullname === newstate.fullname
+				store.subscribe(listener, {equalityCheck})
+				store.set((s) => ({...s, age:2}))
+				expect(listener).not.toHaveBeenCalled()
+				store.set((s) => ({...s, fullname:"Jane Doe"}))
+				expect(listener).toHaveBeenCalledTimes(1)
+			})
+			it('initCall: should allow to call handler at subscription time', () => {
+				const store = createStore(testState2)
+				const listener = vi.fn()
+				store.subscribe(listener, {initCall: true})
+				expect(listener).toHaveBeenCalledTimes(1)
+				expect(listener).toHaveBeenCalledWith(testState2, testState2)
+			})
+			it('should correcly handle initCall with equalityCheck', () => {
+				const store = createStore(testState2)
+				const listener = vi.fn()
+				const equalityCheck = (newstate, oldstate) => oldstate.mum.age === newstate.mum.age
+				store.subscribe(listener, {initCall: true, equalityCheck})
+				expect(listener).toHaveBeenCalledTimes(1)
+				expect(listener).toHaveBeenCalledWith(testState2, testState2)
+				store.set((s) => ({...s, mum: {fullname: 'Jane Black', age: s.mum.age}}))
+				const nState1 = store.get()
+				expect(listener).toHaveBeenCalledTimes(1)
+				store.set((s) => ({...s, mum: {fullname: 'Jane Black', age: 45}}))
+				expect(listener).toHaveBeenCalledTimes(2)
+				expect(listener).toHaveBeenLastCalledWith(store.get(), nState1)
+			})
+		})
 	})
 
 	describe('store.getScopeStore', () => {
@@ -268,50 +291,6 @@ describe('createStore', () => {
 			expect(() => mumStore.subscribe(() => {})).toThrow()
 			expect(() => mumStore.set({fullname: 'Jamy Doe', age: 42})).toThrow()
 			expect(mumStore.isDestroyed()).toBe(true)
-		})
-		it('should trigger listener only on subset change', () => {
-			const store = createStore(testState2)
-			const mumStore = store.getScopeStore('mum')
-			const dadStore = store.getScopeStore('dad')
-			const listener1 = vi.fn()
-			const listener2 = vi.fn()
-			const newMum = {fullname:'Jane Doe', age: 44}
-			mumStore.subscribe(listener1)
-			dadStore.subscribe(listener2)
-			expect(mumStore.get().fullname).toBe('Jane Doe')
-			expect(dadStore.get().age).toBe(41)
-			mumStore.set((s) => ({...s, age: 44}))
-			expect(mumStore.get()).toMatchObject(newMum)
-			expect(listener1).toHaveBeenCalledTimes(1)
-			expect(listener1).toHaveBeenCalledWith(newMum, testState2.mum)
-			expect(listener2).not.toHaveBeenCalled()
-			store.set((s) => ({...s, dad: {...s.dad, age: 54}}))
-			expect(listener2).toHaveBeenCalledTimes(1)
-			expect(listener2).toHaveBeenCalledWith({fullname: 'John Doe', age: 54}, testState2.dad)
-			expect(listener1).toHaveBeenCalledTimes(1)
-		})
-		it('should trigger parent store listener on change', () => {
-			const store = createStore(testState2)
-			const mumStore = store.getScopeStore('mum')
-			const listener = vi.fn()
-			store.subscribe(listener)
-			mumStore.set((s) => ({...s, age: 18}))
-			expect(listener).toHaveBeenCalledTimes(1)
-			expect(listener).toHaveBeenCalledWith(
-				{...testState2, mum: {...testState2.mum, age: 18}},
-				testState2
-			)
-		})
-		it('should trigger scoped listener on parent store change if change is in scope', () => {
-			const store = createStore(testState2)
-			const mumStore = store.getScopeStore('mum')
-			const listener = vi.fn()
-			mumStore.subscribe(listener)
-			store.set((s) => ({...s, dad: {...s.dad, age: 18}}))
-			expect(listener).not.toHaveBeenCalled()
-			store.set((s) => ({...s, mum: {...s.mum, age: 18}}))
-			expect(listener).toHaveBeenCalledTimes(1)
-			expect(listener).toHaveBeenCalledWith({fullname: 'Jane Doe', age:18}, testState2.mum)
 		})
 		it('should work with path too', () => {
 			const store = createStore<{data:{person: null|{fullname:string, age:number}, pet?:string}}>(testState)
@@ -376,6 +355,87 @@ describe('createStore', () => {
 			const dadNameStore = store.getScopeStore('person.dad.name')
 			dadNameStore.set("daddy")
 			expect(store.get()).toStrictEqual({person:{dad:{name:"daddy"}}})
+		})
+		it('should trigger listener only on subset change', () => {
+			const store = createStore(testState2)
+			const mumStore = store.getScopeStore('mum')
+			const dadStore = store.getScopeStore('dad')
+			const listener1 = vi.fn()
+			const listener2 = vi.fn()
+			const newMum = {fullname:'Jane Doe', age: 44}
+			mumStore.subscribe(listener1)
+			dadStore.subscribe(listener2)
+			expect(mumStore.get().fullname).toBe('Jane Doe')
+			expect(dadStore.get().age).toBe(41)
+			mumStore.set((s) => ({...s, age: 44}))
+			expect(mumStore.get()).toMatchObject(newMum)
+			expect(listener1).toHaveBeenCalledTimes(1)
+			expect(listener1).toHaveBeenCalledWith(newMum, testState2.mum)
+			expect(listener2).not.toHaveBeenCalled()
+			store.set((s) => ({...s, dad: {...s.dad, age: 54}}))
+			expect(listener2).toHaveBeenCalledTimes(1)
+			expect(listener2).toHaveBeenCalledWith({fullname: 'John Doe', age: 54}, testState2.dad)
+			expect(listener1).toHaveBeenCalledTimes(1)
+		})
+		it('should trigger parent store listener on change', () => {
+			const store = createStore(testState2)
+			const mumStore = store.getScopeStore('mum')
+			const listener = vi.fn()
+			store.subscribe(listener)
+			mumStore.set((s) => ({...s, age: 18}))
+			expect(listener).toHaveBeenCalledTimes(1)
+			expect(listener).toHaveBeenCalledWith(
+				{...testState2, mum: {...testState2.mum, age: 18}},
+				testState2
+			)
+		})
+		it('should trigger scoped listener on parent store change if change is in scope', () => {
+			const store = createStore(testState2)
+			const mumStore = store.getScopeStore('mum')
+			const listener = vi.fn()
+			mumStore.subscribe(listener)
+			store.set((s) => ({...s, dad: {...s.dad, age: 18}}))
+			expect(listener).not.toHaveBeenCalled()
+			store.set((s) => ({...s, mum: {...s.mum, age: 18}}))
+			expect(listener).toHaveBeenCalledTimes(1)
+			expect(listener).toHaveBeenCalledWith({fullname: 'Jane Doe', age:18}, testState2.mum)
+		})
+		describe("subscribe method should accept options", () => {
+			it('equalityCheck: should allow to set equalityCheck algorythm', () => {
+				const store = createStore(testState2)
+				const scopeStore = store.getScopeStore('mum')
+				const listener = vi.fn()
+				const equalityCheck = (newstate, oldstate) => newstate.age === oldstate.age
+				scopeStore.subscribe(listener, {equalityCheck})
+				store.set((s) => ({...s, mum: {fullname: 'Jane Black', age: s.mum.age}}))
+				const nState1 = scopeStore.get()
+				expect(listener).not.toHaveBeenCalled()
+				store.set((s) => ({...s, mum: {fullname: 'Jane Black', age: 45}}))
+				expect(listener).toHaveBeenCalledTimes(1)
+				expect(listener).toHaveBeenLastCalledWith(scopeStore.get(), nState1)
+			})
+			it('initCall: should allow to call handler at subscription time', () => {
+				const scopeStore = createStore(testState2).getScopeStore('mum.age')
+				const listener = vi.fn()
+				scopeStore.subscribe(listener, {initCall: true})
+				expect(listener).toHaveBeenCalledTimes(1)
+				expect(listener).toHaveBeenCalledWith(43, 43)
+			})
+			it('should correcly handle initCall with equalityCheck', () => {
+				const store = createStore(testState2).getScopeStore('mum')
+				const initState = store.get()
+				const listener = vi.fn()
+				const equalityCheck = (newstate, oldstate) => oldstate.fullname === newstate.fullname
+				store.subscribe(listener, {initCall: true, equalityCheck})
+				expect(listener).toHaveBeenCalledTimes(1)
+				expect(listener).toHaveBeenCalledWith(initState, initState)
+				store.set((s) => ({fullname: initState.fullname, age: 45}))
+				const nState1 = store.get()
+				expect(listener).toHaveBeenCalledTimes(1)
+				store.set((s) => ({fullname: 'Jane Black', age: s.age}))
+				expect(listener).toHaveBeenCalledTimes(2)
+				expect(listener).toHaveBeenCalledWith(store.get(), nState1)
+			})
 		})
 	})
 

@@ -4,11 +4,10 @@ SPDX-FileType: SOURCE
 SPDX-License-Identifier: MIT
 SPDX-FileCopyrightText: 2023 Jonathan Gotti <jgotti@jgotti.org>
 */
-import type { GetScopeStore, Nullable, ScopePath, Store, StoreInitializer, StoreInterface, StoreOptions } from './type'
+import type { GetScopeStore, Nullable, ScopePath, Store, StoreInitializer, StoreInterface, StoreOptions, SubscribeOptions } from './type'
 import { deepFreeze } from './deepFreeze'
 
 //@TODO add documentation for deepFreezed objects and that setter should never return state directly
-
 const createChangeEmitter = () => {
 	const subscriptions = new Map<Symbol, Function>()
 	return {
@@ -46,10 +45,22 @@ const getScopedStore = <TypeState, Key extends keyof TypeState>(store: Omit<Stor
 			throw Error("Can't set propery on primitive values")
 		})
 	}
-
-	const subscribe: StoreInterface<TypeState[Key]>['subscribe'] = (listener) => {
+	
+	const subscribe: StoreInterface<TypeState[Key]>['subscribe'] = (listener, options) => {
+		const { equalityCheck = undefined, initCall = false } = options || {}
 		const _listener = (newState: Nullable<TypeState>, oldState: Nullable<TypeState>) => {
-			newState?.[propName] !== oldState?.[propName] && listener(newState?.[propName] as TypeState[Key], oldState?.[propName])
+			if (equalityCheck) {
+				if (equalityCheck(newState?.[propName] as TypeState[Key], oldState?.[propName] as TypeState[Key])){
+					return
+				}
+			} else if (newState?.[propName] === oldState?.[propName]) {
+				return
+			}
+			listener(newState?.[propName] as TypeState[Key], oldState?.[propName])
+		}
+		if (initCall) {
+			const state = get()
+			listener(state, state)
 		}
 		return store.subscribe(_listener)
 	}
@@ -141,7 +152,7 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 			state = [...init] as TypeState
 		} else if (typeof init === 'object') {
 			if (!noWarn && Object.prototype.toString.call(init) !== '[object Object]') {
-				console.warn("TstoREx is intended to be used with plain object, array or primitives, other types may not work as expected.")
+				console.warn("TstoREx is intended to be used with plain object, array or primitives, other types may not work as expected.\nIf you know what you are doing you can disable this warning using the noWarn option.")
 			}
 			state = { ...init }
 		} else {
@@ -150,8 +161,11 @@ export const createStore = <TypeState>(init: Nullable<StoreInitializer<TypeState
 		noFreeze || deepFreeze(state)
 	}
 
-	const subscribe: StoreInterface<TypeState>['subscribe'] = (listener, equalityCheck) => {
+	const subscribe: StoreInterface<TypeState>['subscribe'] = (listener, options?:SubscribeOptions<TypeState>) => {
+		// const subscribe: StoreInterface<TypeState>['subscribe'] = (listener, equalityCheck) => {
 		throwIfDestroyed("Can't subscribe to a destroyed store")
+		const { equalityCheck = undefined, initCall = false } = options || {}
+		initCall && listener(state as TypeState, state as TypeState)
 		return emitter.subscribe(listener, equalityCheck)
 	}
 

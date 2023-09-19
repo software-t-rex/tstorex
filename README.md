@@ -122,6 +122,16 @@ const changeListener = (newState, oldState) => { console.log("state changed") }
 const unsubscribe = myStore.subscribe(changeListener)
 // later stop listnening for change by calling unsubscribe()
 ```
+The subscribe method can take an options parameter like this: 
+```ts
+const unsubscribe = myStore.subscribe(changeListener, {
+	// only interested on change if fullName is not the same
+	equalityCheck: (newState, oldState) => newState.fullName === oldState.fullName,
+	// set initCall to true will issue a first call at subscription time where new and old state will be the same
+	// this is sometimes usefull to init a side effect and listen for changes in the future.
+	initCall: true
+})
+```
 ### Stop using the store
 The destroy method will unbound any listener previously attached to the store and reset the store value to null
 > ⚠ warning: Any call to the store following destroy will throw an Error !
@@ -145,6 +155,7 @@ Returned scoped store will provide the same interface than a normal store but no
 So you can even get a scope store from another one
 ```ts
 const mumAgeStore = mumStore.getScopeStore('age')
+const unsubscribe = mumAgeStore.subscribe((newAge, oldAge) => console.log(`Mum age changed from ${oldAge} to ${newAge}`))
 ```
 ## Recipes 
 We wanted TstoREx to be easily extensible for common use cases, and we come with some pre-made recipes to help you integrate TstoREx to your application. you can find more information on the [Official Recipes page](./src/recipes/README.md).
