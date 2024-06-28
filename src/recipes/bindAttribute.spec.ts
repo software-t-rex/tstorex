@@ -12,7 +12,7 @@ import { describe, it, expect } from "vitest"
 import { createStore } from "../store"
 import { bindAttribute } from "./bindAttribute"
 describe("bindAttribute", () => {
-	it("should bind a Store<String> to an attribute in both direction", () => {
+	it("should bind a Store<String> to an attribute in both direction", async () => {
 		const store = createStore("John")
 		const div = document.createElement("div")
 		const unbind = bindAttribute(store, div, "data-name")
@@ -20,6 +20,8 @@ describe("bindAttribute", () => {
 		store.set("Jane")
 		expect(div.getAttribute('data-name')).toBe("Jane")
 		div.setAttribute('data-name', "Jack")
+		// need to wait for mutation observer to be triggered
+		await new Promise((resolve) => setTimeout(resolve, 0))
 		expect(store.get()).toBe("Jack")
 		unbind()
 		store.set("Jazz")
