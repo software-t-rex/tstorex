@@ -1,4 +1,4 @@
-# TstorEX recipes
+# TstoREX recipes
 
 ## Official recipes
 You will find here a bunch of provided recipes that you may use to assist you with your store related experience.
@@ -32,7 +32,7 @@ dispatch({type:'increment'})
 ```
 
 ### bindAttribute:
-Allow you to make a 2 way data binding between a store<string> or a scopedStore<string> to an HTMLElement attribute
+Allow you to make a 2 way data binding between a store<string> or a scopedStore<string> to a HTMLElement attribute
 ```ts
 const myStore = createStore({userId:1, username: "malko"})
 const unbind = bindAttribute(myStore.getScopeStore('userId'), myDivElement, 'data-userid')
@@ -43,8 +43,60 @@ console.log(myStore.get().userId) // 3
 unbind() // stop sync
 ```
 
+### bindStyle:
+**bindStyle** contains 3 recipes: **bindStyleProp**, **bindStyleProps** and **bindClassName**. 
+All of them are 1 way data binding from the store to an HTMLElement
+
+#### bindStyleProp:
+Allow you to bind a HTMLElement single style property to the store
+```ts
+const styleStore = createStore({color: "red"})
+const unbindColorStyle = bindStyleProp(store.getScopeStore("color"), document.body, "color")
+styleStore.set({color:'blue'})
+console.log(document.body.style.color) // blue
+unbindColorStyle() // stop sync
+```
+#### bindStyleProps:
+Alternatively you can bind multiple styles properties using **bindStyleProps** instead:
+```ts
+// you can use both CamelCase or kebab-case for properties names
+const elmt = document.getElementById("myElement")
+const styleStore = createStore({color: "white", fontSize: "1em", "background-color": "black"})
+// you can set option autoUnbindOnRemoved to true to automaticly unbind when 
+// the element is removed from the dom
+const unbindStyles = bindStyleProps(store, elmt, {autoUnbindOnRemoved: true})
+styleStore.set({color:"black", fontSize:"1rem", "background-color":"white"})
+console.log(elmt.style.color) // black
+elmt.remove() // this will stop the binding after mutation observer has been called
+```
+
+#### bindClassName:
+Allow you to a HTMLInputElement class applied from value in the store
+```ts
+const themeSelectorElmt = document.querySelector("select.theme-selector")
+const userPrefsStore = createStore({theme: "dark", lc:"en"})
+const themeStore = userPrefsStore.getScopeStore("theme")
+// if prefix is used then all class with same prefix will be removed and replaced by this one
+// if no prefix is used it will only set newValue and removeOldValue whenever store change.
+const unbindThemeClassName = bindClassName(themeStore, documunt.body, {prefix:"theme-"})
+themeSelectorElmt.addEventListener("change", (evt) => {
+	themeStore.set(themeSelectorElmt.value)
+})
+// now if user select "light" in the theme select menu, it will remove any class
+// theme-* on body and add the theme-light
+
+unbindThemeClassName() // this will also remove class associated to the binding from the element
+```
+> All bindStyleProp, bindStyleProps, bindClassName apply value in the store at binding time.
+> All methods can take an *autoUnbindOnRemoved* option parameter to automatically unbind sync when 
+> attached element is removed from its parent.
+>
+> ⚠ Need to know: element must have a parent at the time of call as it will listen 
+> for mutation on the parent element. Also be aware as it uses mutationObservers, 
+> it will be called asynchronously
+
 ### bindInput:
-Allow you to make a 2 way data binding between a store and an HTMLInputElement (or
+Allow you to make a 2 way data binding between a store and a HTMLInputElement (or
 HTMLSelectElement, HTMLTextAreaElement)
 ```ts
 const unbind = bindInput(myStore.getScopeStore('name'), inputElement)

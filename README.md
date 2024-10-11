@@ -166,6 +166,7 @@ You will find the following pre-made recipes:
 * bindAttribute and bindInput: easy two way data binding
 * historize: help you implement undo/redo features
 * mutate: modify your state as if it was a mutable object, re-use immerjs style recipes.
+* bindStyleProp, bindStyleProps, bindClassName: allow to easily update element styles properties from store values
 
 ## Side notes
 - In order to benefits correct typing detection your tsconfig.json compilerOptions.moduleResolution should be set to "node16" or "nodenext".
