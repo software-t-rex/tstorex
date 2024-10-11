@@ -1,6 +1,6 @@
 {
 	"name": "@t-rex.software/tstorex",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"description": "An agnostic, small, dependence free, state management library",
 	"type": "module",
 	"main": "index.ts",
