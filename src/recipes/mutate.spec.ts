@@ -130,7 +130,8 @@ describe("mutate", () => {
 	it("should not trigger any change if no mutation applyed", () => {
 		const fn = vi.fn()
 		const store = createStore(john)
-		const unsubscibe = store.subscribe(() => {})
+		const unsubscibe = store.subscribe(fn)
+		mutate(store, (s) => { })
 		expect(fn).not.toHaveBeenCalled()
 		unsubscibe()
 	})
